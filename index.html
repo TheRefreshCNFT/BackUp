@@ -442,27 +442,38 @@
             <span>No scan yet. Paste a policy ID and press “Scan policy on chain”.</span>
           </div>
 
-          <div class="table-wrapper">
-            <table id="backupsResultsTable" class="loc-results-table hidden">
-              <thead>
-                <tr>
-                  <th>Asset Name (ASCII)</th>
-                  <th>Quantity</th>
-                  <th>Full Unit</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+<div class="table-wrapper">
+  <table id="backupsResultsTable" class="loc-results-table hidden">
+    <thead>
+      <tr>
+        <th>Asset Name (ASCII)</th>
+        <th>Quantity</th>
+        <th>Full Unit</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
 
-          <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem;">
-            <button type="button"
-                    id="backupsDownloadZipBtn"
-                    class="loc-btn-secondary"
-                    disabled>
-              Download BackUps .zip
-            </button>
-          </div>
+<p id="backupsFeeStatus" class="loc-tx-status"></p>
+
+<div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem;">
+  <button type="button"
+          id="backupsPayBtn"
+          class="loc-btn-secondary"
+          style="display:none;">
+    <!-- label is set in JS -->
+    Pay &amp; unlock ZIP
+  </button>
+
+  <button type="button"
+          id="backupsDownloadZipBtn"
+          class="loc-btn-secondary"
+          disabled>
+    Download BackUps .zip
+  </button>
+</div>
+
         </div>
       </div>
     </section>
@@ -477,7 +488,8 @@
     <div class="container">
       <h1>BackUps Access</h1>
 
-      <p id="description">BackUps is free for The Refresh holders. Others can unlock 30 days for 5₳.</p>
+      <p id="description">BackUps is free for The Refresh Whales. Others pay 100₳ per 1000 assets per policy BackUp.</p>
+
       <p id="instructions"></p>
 
       <div class="row" id="connectRow">
@@ -494,17 +506,19 @@
   <div class="container">
     <div class="card">
       <h2>Access Gate</h2>
-      <p class="access-message">
-        The Refresh hodlers have no access charge. 5₳ for 30 days access for all others.
-      </p>
+<p class="access-message">
+  The Refresh Whales get in VIP. Pricing for others is 100₳ per 1000 assets (per policy BackUp).
+</p>
+
 
       <p id="gateBlurb"></p>
       <p id="accessMessage" class="access-message"></p>
 
       <!-- Shown only if policy requirements are NOT met -->
-      <button id="payAccessBtn" style="display:none;">
-        Pay 5₳ for 30 days access
-      </button>
+<button id="payAccessBtn" style="display:none;">
+  Enter BackUps
+</button>
+
     </div>
   </div>
 </div>
@@ -540,9 +554,16 @@ const GATE_RECIPIENT_ADDRESS =
 
 // =========================================================
 // Pricing / Fees
+// 100₳ per 1000 assets (per policy BackUp) for non-holders
 // =========================================================
-const ACCESS_PASS_FEE_ADA       = 5;
-const ACCESS_PASS_FEE_LOVELACE  = String(ACCESS_PASS_FEE_ADA * 1_000_000);
+const ACCESS_FEE_PER_1000_ADA = 100;
+
+function computeBackupsFeeAda(assetCount) {
+  if (!assetCount || assetCount <= 0) return 0;
+  const blocks = Math.ceil(assetCount / 1000);
+  return blocks * ACCESS_FEE_PER_1000_ADA;
+}
+
 
 // =========================================================
 // Blockfrost config for BackUps (policy-based scan)
@@ -557,7 +578,7 @@ const BLOCKFROST_PROJECT_ID = 'mainnetehvvvJVoJUAz5DFJJz2L9fHZmkXlXTMP'; // e.g.
 const ACCESS_POLICIES = [
   {
     policyId: 'adc5716393953403109c335e68c0384238fd19653e960e03afa1fb1f',
-    minAssets: 1,
+    minAssets: 25,
     label: 'OG The Refresh',
     purchaseUrl: 'https://www.jpg.store/collection/therefresh'
   }
@@ -572,6 +593,13 @@ let backupsHasScan = false;
 let backupsLastPolicyId = '';
 let backupsLastRows = [];     // [{ unit, policyId, assetName, quantity, metadata }, ...]
 let backupsLastKeys = [];     // sorted list of all metadata keys
+  let backupsIsHolder = false;                 // true if wallet meets Refresh requirement
+let backupsRequiresPayment = false;          // true for non-holders
+let backupsPaidForCurrentPolicy = false;     // set to true after successful payment
+let backupsCurrentFeeAda = 0;                // dynamic fee for current scan
+let backupsCurrentFeeLovelace = '0';
+let backupsCurrentAssetCount = 0;
+
 
 // ---------------------------------------------------------
 // Helper text for gate
@@ -599,7 +627,8 @@ function getPrimaryPurchaseUrl() {
 instructionsEl.textContent = `Connect a Cardano wallet to continue.`;
 gateBlurbEl.textContent =
   `If your wallet holds at least ${buildRequirementsLine()}, you have free BackUps access. ` +
-  `Otherwise, you can unlock 30 days access for ${ACCESS_PASS_FEE_ADA}₳.`;
+  `Otherwise, BackUps costs 100₳ per 1000 assets (per policy BackUp) for non-holders.`;
+
 
 // ---------------------------------------------------------
 // Mesh wallet detection
@@ -776,6 +805,21 @@ function renderBackupsResults() {
   summary.innerHTML =
     `<span>Found <strong>${count}</strong> asset(s) under policy <code>${backupsLastPolicyId}</code>.</span>`;
 
+  // reset per-scan payment state
+  backupsCurrentAssetCount = count;
+  backupsCurrentFeeAda = computeBackupsFeeAda(count);
+  backupsCurrentFeeLovelace = String(backupsCurrentFeeAda * 1_000_000);
+  backupsPaidForCurrentPolicy = backupsIsHolder; // holders never pay
+
+  const feeStatus = document.getElementById('backupsFeeStatus');
+  const payBtn    = document.getElementById('backupsPayBtn');
+
+  if (feeStatus) feeStatus.textContent = '';
+  if (payBtn) {
+    payBtn.style.display = 'none';
+    payBtn.disabled = false;
+  }
+
   // sort by assetName asc
   backupsLastRows.sort((a, b) =>
     (a.assetName || '').localeCompare(b.assetName || '')
@@ -792,8 +836,36 @@ function renderBackupsResults() {
   }
 
   table.classList.remove('hidden');
-  zipBtn.disabled = false;
+
+  if (backupsIsHolder) {
+    if (feeStatus) {
+      feeStatus.textContent =
+        `You are a Refresh holder (≥ ${ACCESS_POLICIES[0].minAssets}). No BackUps fee for this policy.`;
+    }
+    zipBtn.disabled = false;
+  } else {
+    if (backupsCurrentFeeAda <= 0) {
+      if (feeStatus) {
+        feeStatus.textContent =
+          'No assets under this policy, so there is nothing to pay or download.';
+      }
+      zipBtn.disabled = true;
+    } else {
+      if (feeStatus) {
+        feeStatus.textContent =
+          `This policy has ${count} asset(s).\n` +
+          `BackUps fee is ${backupsCurrentFeeAda}₳ (100₳ per 1000 assets).\n` +
+          `Press “Pay & unlock ZIP” to process the transaction.`;
+      }
+      if (payBtn) {
+        payBtn.textContent = `Pay ${backupsCurrentFeeAda}₳ & unlock ZIP`;
+        payBtn.style.display = 'inline-flex';
+      }
+      zipBtn.disabled = true;
+    }
+  }
 }
+
 
 async function backupsScanForPolicy() {
   const statusEl  = document.getElementById('backupsScanStatus');
@@ -1085,6 +1157,79 @@ async function exportBackupsZip() {
   saveAs(blob, filename);
 }
 
+  async function payForCurrentPolicy() {
+  if (!meshWallet) {
+    alert('Connect a wallet first.');
+    return;
+  }
+  if (!backupsRequiresPayment || backupsIsHolder) {
+    // nothing to do, holders don't pay here
+    return;
+  }
+  if (!backupsHasScan || !backupsLastRows.length || backupsCurrentFeeAda <= 0) {
+    alert('Scan a policy with assets before paying.');
+    return;
+  }
+
+  const feeStatus = document.getElementById('backupsFeeStatus');
+  const payBtn    = document.getElementById('backupsPayBtn');
+  const zipBtn    = document.getElementById('backupsDownloadZipBtn');
+
+  try {
+    if (feeStatus) {
+      feeStatus.textContent =
+        `Building ${backupsCurrentFeeAda}₳ BackUps transaction for policy ${backupsLastPolicyId}…`;
+    }
+    if (payBtn) {
+      payBtn.disabled = true;
+      payBtn.textContent = 'Waiting for wallet…';
+    }
+
+    const tx = new Transaction({ initiator: meshWallet });
+
+    const lovelace = String(backupsCurrentFeeAda * 1_000_000);
+    tx.sendLovelace(GATE_RECIPIENT_ADDRESS, lovelace);
+
+    if (!userAddress) {
+      userAddress = await meshWallet.getChangeAddress();
+    }
+    tx.setChangeAddress(userAddress);
+
+    const unsignedTx = await tx.build();
+    const signedTx   = await meshWallet.signTx(unsignedTx);
+    const txHash     = await meshWallet.submitTx(signedTx);
+
+    console.log('[BackUps] Policy payment tx hash:', txHash);
+
+    backupsPaidForCurrentPolicy = true;
+
+    if (feeStatus) {
+      feeStatus.textContent =
+        `Payment confirmed for policy ${backupsLastPolicyId}.\n` +
+        `Tx: ${txHash}\nYou can now download the BackUps .zip for this policy.`;
+    }
+    if (zipBtn) {
+      zipBtn.disabled = false;
+    }
+
+    // TODO (server-side, later):
+    // log wallet + policyId + asset count + txHash
+    // so future visits can re-use this payment if the policy hasn't changed.
+
+  } catch (err) {
+    console.error('[BackUps] payForCurrentPolicy error:', err);
+    if (feeStatus) {
+      feeStatus.textContent =
+        'Payment failed or was rejected. No funds were taken. You can try again.';
+    }
+  } finally {
+    if (payBtn) {
+      payBtn.disabled = false;
+      payBtn.textContent = `Pay ${backupsCurrentFeeAda}₳ & unlock ZIP`;
+    }
+  }
+}
+
 
 // ---------------------------------------------------------
 // Initialize BackUps app after gate
@@ -1105,25 +1250,25 @@ async function initLocApp(accessVia) {
 
   if (walletShortEl) walletShortEl.textContent = shortenAddress(userAddress);
 
-  if (accessTypeEl) {
-    if (accessVia === 'pass') {
-      let label = 'Paid BackUps access (30-day pass).';
-      if (typeof locPassDaysLeft === 'number' && !Number.isNaN(locPassDaysLeft)) {
-        const days = Math.max(0, Math.round(locPassDaysLeft));
-        label = `Paid BackUps access – ${days} day${days === 1 ? '' : 's'} left.`;
-      }
-      accessTypeEl.textContent = label;
-    } else {
-      accessTypeEl.textContent = 'Free access via OG The Refresh holdings.';
-    }
+if (accessTypeEl) {
+  if (accessVia === 'holder') {
+    accessTypeEl.textContent = 'Free access via OG The Refresh holdings.';
+  } else {
+    accessTypeEl.textContent = 'Per-policy BackUps pricing (non-holder).';
   }
+}
+backupsIsHolder = (accessVia === 'holder');
+backupsRequiresPayment = !backupsIsHolder;
+  
+// Wire BackUps buttons
+const scanBtn = document.getElementById('backupsScanBtn');
+const zipBtn  = document.getElementById('backupsDownloadZipBtn');
+const payBtn  = document.getElementById('backupsPayBtn');
 
-  // Wire BackUps buttons
-  const scanBtn = document.getElementById('backupsScanBtn');
-  const zipBtn  = document.getElementById('backupsDownloadZipBtn');
+scanBtn?.addEventListener('click', backupsScanForPolicy);
+zipBtn?.addEventListener('click', exportBackupsZip);
+payBtn?.addEventListener('click', payForCurrentPolicy);
 
-  scanBtn?.addEventListener('click', backupsScanForPolicy);
-  zipBtn?.addEventListener('click', exportBackupsZip);
 }
 
 // ---------------------------------------------------------
@@ -1154,56 +1299,50 @@ async function checkPolicyAssets() {
       p => (required[p.policyId] || 0) < p.minAssets
     );
 
-    if (unmet.length === 0) {
-      const detail = buildRequirementsDetail(required);
+const unmet = ACCESS_POLICIES.filter(
+  p => (required[p.policyId] || 0) < p.minAssets
+);
 
-      walletStatus.textContent =
-        `✅ Access granted.\n${detail}`;
+if (unmet.length === 0) {
+  backupsIsHolder = true;
+  backupsRequiresPayment = false;
 
-      accessMessage.classList.remove('error');
-      accessMessage.innerHTML = `<strong>Access granted. Loading BackUps…</strong>`;
+  const detail = buildRequirementsDetail(required);
 
-      payAccessBtn.style.display = 'none';
+  walletStatus.textContent =
+    `✅ Access granted.\n${detail}`;
 
-      protectedArea.classList.remove('hidden');
-      gateOverlay.classList.add('hidden');
-      initLocApp('holder');
-    } else {
-      const detail = buildRequirementsDetail(required);
-      walletStatus.textContent = detail;
+  accessMessage.classList.remove('error');
+  accessMessage.innerHTML = `<strong>Access granted. Loading BackUps…</strong>`;
 
-      // Check if this wallet already has an active 30-day pass
-      let passInfo = null;
-      if (userIdentity) {
-        passInfo = await checkPaidAccessStatus();
-      }
+  payAccessBtn.style.display = 'none';
 
-      if (passInfo && passInfo.status === 'active') {
-        walletStatus.textContent =
-          `BackUps access active (5₳ pass).\nExpires: ${passInfo.expiresOn}`;
+  protectedArea.classList.remove('hidden');
+  gateOverlay.classList.add('hidden');
+  initLocApp('holder');
+} else {
+  backupsIsHolder = false;
+  backupsRequiresPayment = true;
 
-        // Compute days left
-        let daysLeft = null;
-        if (passInfo.expiresOn) {
-          const expiresMs = Date.parse(passInfo.expiresOn);
-          if (!Number.isNaN(expiresMs)) {
-            const diffMs = expiresMs - Date.now();
-            daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-          }
-        }
-        locPassDaysLeft = daysLeft;
+  const detail = buildRequirementsDetail(required);
+  walletStatus.textContent = detail;
 
-        accessMessage.classList.remove('error');
-        accessMessage.innerHTML =
-          `<strong>Access granted via paid BackUps pass. Loading BackUps…</strong>`;
+  accessMessage.classList.add('error');
+  accessMessage.innerHTML =
+    `You don’t yet meet the free BackUps holder requirements.<br>` +
+    `Pricing for non-holders is <strong>100₳ per 1000 assets</strong> (per policy BackUp).<br>` +
+    `Press “Enter BackUps” below to continue and scan a policy.`;
 
-        payAccessBtn.style.display = 'none';
+  payAccessBtn.textContent = 'Enter BackUps';
+  payAccessBtn.style.display = 'inline-flex';
 
-        protectedArea.classList.remove('hidden');
-        gateOverlay.classList.add('hidden');
-        initLocApp('pass');
-        return;
-      }
+  // clicking this just opens BackUps with per-policy pricing mode
+  payAccessBtn.onclick = () => {
+    protectedArea.classList.remove('hidden');
+    gateOverlay.classList.add('hidden');
+    initLocApp('nonholder');
+  };
+}
 
       accessMessage.classList.add('error');
       accessMessage.innerHTML =
@@ -1336,7 +1475,6 @@ async function connect() {
 
 document.addEventListener('DOMContentLoaded', detect);
 btn.addEventListener('click', connect);
-payAccessBtn.addEventListener('click', payForLocAccess);
 </script>
 
 </body>
