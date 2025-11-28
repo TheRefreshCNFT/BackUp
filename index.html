@@ -1025,6 +1025,136 @@ async function exportBackupsZip() {
           else {
             // Try to guess from URL path
             try {
+async function exportBackupsZip() {
+  if (!backupsHasScan || !backupsLastRows.length || !window.JSZip || !window.saveAs) {
+    return;
+  }
+
+  const zip    = new JSZip();
+  const policy = backupsLastPolicyId || 'unknown_policy';
+  const root   = zip.folder(`policy_${policy}`) || zip;
+
+  // 1) assets_full.json – original detailed rows for the whole collection
+  root.file('assets_full.json', JSON.stringify(backupsLastRows, null, 2));
+
+  // 1b) assets.json – simplified array for minting: [{ assetName, metadata }, ...]
+  const simpleAssets = backupsLastRows.map(row => ({
+    assetName: row.assetName,
+    metadata:  row.metadata || {}
+  }));
+  root.file('assets.json', JSON.stringify(simpleAssets, null, 2));
+
+  // 2) metadata.csv – spreadsheet with all metadata keys
+  const keys    = backupsLastKeys;
+  const headers = ['unit', 'assetName', 'quantity', ...keys];
+  const lines   = [headers.map(csvEscape).join(',')];
+
+  for (const row of backupsLastRows) {
+    const meta = row.metadata || {};
+    const vals = [
+      row.unit,
+      row.assetName,
+      row.quantity,
+      ...keys.map(k => {
+        const v = meta[k];
+        if (v === null || v === undefined) return '';
+        if (typeof v === 'object') return JSON.stringify(v);
+        return String(v);
+      }),
+    ];
+    lines.push(vals.map(csvEscape).join(','));
+  }
+
+  const csvString = lines.join('\n');
+  root.file('metadata.csv', csvString);
+
+  // 3) by_asset/*.json – one CIP-25 style JSON per asset
+  const perAsset = root.folder('by_asset');
+  for (const row of backupsLastRows) {
+    const meta = row.metadata || {};
+
+    // Asset key inside the policy: prefer metadata.name, then ASCII asset name, then unit
+    const assetKey = (meta.name && typeof meta.name === 'string')
+      ? meta.name
+      : (row.assetName || row.unit);
+
+    const cip25 = {
+      "721": {
+        [row.policyId]: {
+          [assetKey]: meta
+        }
+      }
+    };
+
+    const safeName =
+      row.assetName && /^[a-z0-9_\-]+$/i.test(row.assetName)
+        ? row.assetName
+        : row.unit;
+
+    perAsset.file(
+      `${safeName}.json`,
+      JSON.stringify(cip25, null, 2)
+    );
+  }
+
+  // 4) images/ – download image files from IPFS / HTTP where possible
+  const imgFolder = root.folder('images');
+  const imageFetchPromises = [];
+
+  for (const row of backupsLastRows) {
+    const meta = row.metadata || {};
+    let imgField = meta.image;
+
+    if (!imgField) continue;
+
+    // Some collections use an array of images – grab the first string
+    if (Array.isArray(imgField)) {
+      imgField = imgField.find(v => typeof v === 'string') || null;
+    }
+    if (typeof imgField !== 'string') continue;
+
+    let finalUrl = null;
+
+    if (imgField.startsWith('ipfs://')) {
+      // ipfs://Qm... or ipfs://ipfs/Qm...
+      let path = imgField.replace(/^ipfs:\/\//, '');
+      if (path.startsWith('ipfs/')) {
+        path = path.slice(5);
+      }
+      // You can swap to your preferred gateway here
+      finalUrl = `https://ipfs.io/ipfs/${path}`;
+    } else if (imgField.startsWith('https://') || imgField.startsWith('http://')) {
+      finalUrl = imgField;
+    } else {
+      // Unknown scheme (e.g. bare CID) – skip for now
+      continue;
+    }
+
+    if (!finalUrl) continue;
+
+    const safeName =
+      row.assetName && /^[a-z0-9_\-]+$/i.test(row.assetName)
+        ? row.assetName
+        : row.unit;
+
+    imageFetchPromises.push(
+      (async () => {
+        try {
+          const res = await fetch(finalUrl);
+          if (!res.ok) {
+            console.warn('[BackUps] Image fetch failed for', finalUrl, res.status);
+            return;
+          }
+          const contentType = res.headers.get('content-type') || '';
+          let ext = 'bin';
+
+          if (contentType.includes('png')) ext = 'png';
+          else if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = 'jpg';
+          else if (contentType.includes('gif')) ext = 'gif';
+          else if (contentType.includes('webp')) ext = 'webp';
+          else {
+            // Try to guess from URL path
+            try {
               const urlObj = new URL(finalUrl);
               const path   = urlObj.pathname.toLowerCase();
               if (path.endsWith('.png')) ext = 'png';
@@ -1056,7 +1186,8 @@ async function exportBackupsZip() {
     `Policy ID: ${policy}`,
     '',
     'Contents:',
-    '- assets.json       : All assets under the policy, simplified to { assetName, metadata }.',
+    '- assets_full.json  : Raw detailed export (unit, policyId, quantity, metadata per asset).',
+    '- assets.json       : Simplified [{ assetName, metadata }] for minting tools.',
     '- metadata.csv      : Spreadsheet-friendly view of all on-chain metadata properties.',
     '- by_asset/*.json   : One CIP-25 721-style JSON file per asset.',
     '- images/*          : Image files fetched from IPFS / HTTPS image URLs where available.',
