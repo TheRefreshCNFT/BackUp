@@ -907,8 +907,27 @@ async function exportBackupsZip() {
   const policy = backupsLastPolicyId || 'unknown_policy';
   const root   = zip.folder(`policy_${policy}`) || zip;
 
-  // 1) assets.json – all raw rows
-  root.file('assets.json', JSON.stringify(backupsLastRows, null, 2));
+  // 1) assets.json – CIP-25 style for all assets (no "unit" field)
+  const allCip25 = { "721": {} };
+
+  for (const row of backupsLastRows) {
+    const meta     = row.metadata || {};
+    const policyId = row.policyId;
+
+    // Asset key inside the policy: same logic as per-asset files
+    const assetKey = (meta.name && typeof meta.name === 'string')
+      ? meta.name
+      : (row.assetName || row.unit);
+
+    if (!allCip25["721"][policyId]) {
+      allCip25["721"][policyId] = {};
+    }
+
+    allCip25["721"][policyId][assetKey] = meta;
+  }
+
+  root.file('assets.json', JSON.stringify(allCip25, null, 2));
+
 
   // 2) metadata.csv – spreadsheet with all metadata keys
   const keys    = backupsLastKeys;
