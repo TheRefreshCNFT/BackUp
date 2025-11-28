@@ -1,1 +1,1241 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>BackUps by The Refresh</title>
+  <style>
+    :root {
+      --gap: 1rem;
+      --pad: .5rem;
+      --primary: #2196F3;
+      --primary-dark: #1976D2;
+      --secondary: #21CBF3;
+      --text: #e4e8ff;
+      --text-light: #9aa3d9;
+      --bg: #050810;
+      --card-bg: rgba(7, 12, 30, 0.92);
+      --border: rgba(120, 141, 255, 0.35);
+      --success: #4CAF50;
+      --error: #f44336;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #000;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* --- WALLET GATE OVERLAY --- */
+    #gateOverlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    header {
+      position: relative;
+      background: transparent;
+      color: white;
+      text-align: center;
+      padding: 2rem var(--pad) 1.5rem;
+      box-shadow: none;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    #description {
+      font-size: 1.2rem;
+      opacity: 0.9;
+      margin-bottom: 1.5rem;
+    }
+
+    #instructions {
+      font-size: 1rem;
+      margin: 1rem 0;
+    }
+
+    #walletStatus {
+      background: rgba(255,255,255,0.15);
+      border-radius: 50px;
+      padding: 0.5rem 1.5rem;
+      display: inline-block;
+      margin-top: 1rem;
+      font-weight: 500;
+      backdrop-filter: blur(5px);
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 0 var(--pad);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      padding: 2rem;
+      margin: 2rem auto;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    button {
+      padding: 0.8rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    #connectBtn {
+      background: white;
+      color: var(--primary);
+    }
+
+    #connectBtn:hover {
+      background: #f5f5f5;
+      transform: translateY(-2px);
+    }
+
+    #connectBtn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    select, input {
+      padding: 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+      width: 100%;
+    }
+
+    select {
+      flex: 1;
+      background: white;
+    }
+
+    .hidden { display: none !important; }
+
+    .access-message {
+      margin-top: 1rem;
+      font-size: 1rem;
+      color: var(--text-light);
+      white-space: pre-line;
+    }
+
+    .access-message strong { color: var(--success); }
+    .access-message.error { color: var(--error); }
+
+    .access-message a {
+      color: var(--primary-dark);
+      text-decoration: underline;
+    }
+
+    /* --- Refreshed wallet gate look --- */
+    #gateOverlay {
+      background: radial-gradient(circle at top left, #202738 0, #050810 55%, #020308 100%);
+      color: #e4e8ff;
+    }
+
+    header .container {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo {
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      width: 52px;
+      height: auto;
+      padding: 0.25rem;
+      background: rgba(5, 8, 16, 0.9);
+      border-radius: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.55);
+    }
+
+    header h1 {
+      font-size: 2.1rem;
+      letter-spacing: 0.04em;
+    }
+
+    #description {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    #instructions {
+      font-size: 0.95rem;
+      color: #a9b5ff;
+    }
+
+    .card {
+      background: rgba(5, 10, 24, 0.9);
+      border-radius: 18px;
+      border: 1px solid rgba(120, 141, 255, 0.25);
+      box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.75),
+        0 0 0 1px rgba(255, 255, 255, 0.02);
+      color: #e4e8ff;
+      backdrop-filter: blur(10px);
+    }
+
+    .row { margin-top: 0.5rem; }
+
+    select, #connectBtn { border-radius: 999px; }
+
+    select {
+      background: rgba(3, 7, 20, 0.9);
+      border: 1px solid rgba(96, 125, 255, 0.6);
+      color: #e4e8ff;
+    }
+
+    #connectBtn {
+      background: linear-gradient(135deg, #ff3366, #ffc857);
+      color: #050814;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    }
+
+    #connectBtn:hover {
+      background: linear-gradient(135deg, #ff4b80, #ffd46b);
+      transform: translateY(-1px) scale(1.01);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.7);
+    }
+
+    #payAccessBtn {
+      margin-top: 0.75rem;
+      background: linear-gradient(135deg, #21cbf3, #7cffb3);
+      color: #050814;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+      border-radius: 999px;
+    }
+
+    #payAccessBtn:hover {
+      transform: translateY(-1px) scale(1.01);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7);
+    }
+
+    #walletStatus {
+      background: rgba(9, 16, 40, 0.9);
+      border-radius: 999px;
+      border: 1px solid rgba(106, 255, 183, 0.4);
+      color: #a7ffcb;
+    }
+
+    .access-message { color: #b7c3ff; }
+    .access-message.error { color: #ff8b94; }
+    .access-message a { color: #ffc857; }
+
+    /* Shared gated area layout (re-using existing LOC styles) */
+    .loc-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 1.5rem 1.75rem;
+    }
+
+    .loc-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .loc-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .loc-title-accent {
+      opacity: 0.8;
+      font-size: 0.95em;
+    }
+
+    .loc-subtitle {
+      margin: 0;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+
+    .loc-status-block {
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.12);
+      backdrop-filter: blur(6px);
+    }
+
+    .loc-status {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    .loc-status-ok {
+      font-weight: 500;
+    }
+
+    .loc-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      gap: 1.25rem;
+      width: 100%;
+    }
+
+    .loc-column {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .loc-card {
+      background: rgba(5, 12, 28, 0.95);
+      border-radius: 0.9rem;
+      border: 1px solid rgba(120, 141, 255, 0.2);
+      padding: 1rem 1.1rem;
+      font-size: 0.9rem;
+    }
+
+    .loc-card h3 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+    }
+
+    .loc-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .loc-field span {
+      opacity: 0.85;
+    }
+
+    .loc-field input,
+    .loc-field textarea {
+      background: rgba(3, 7, 20, 0.9);
+      border: 1px solid rgba(96, 125, 255, 0.5);
+      border-radius: 0.6rem;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.9rem;
+      color: #e4e8ff;
+    }
+
+    .loc-btn-primary,
+    .loc-btn-secondary {
+      border-radius: 999px;
+      padding: 0.55rem 1rem;
+      font-size: 0.9rem;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+
+    .loc-btn-primary {
+      background: linear-gradient(135deg, #ff3366, #ffc857);
+      color: #050814;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.7);
+      margin-top: 0.25rem;
+    }
+
+    .loc-btn-primary:hover {
+      transform: translateY(-1px) scale(1.01);
+    }
+
+    .loc-btn-secondary {
+      background: rgba(10, 18, 46, 0.9);
+      color: #e4e8ff;
+      border: 1px solid rgba(120, 141, 255, 0.6);
+    }
+
+    .loc-hint {
+      font-size: 0.75rem;
+      opacity: 0.75;
+    }
+
+    .loc-tx-status {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      opacity: 0.9;
+    }
+
+    /* BackUps results table */
+    .table-wrapper {
+      max-height: 260px;
+      overflow: auto;
+      margin-top: 0.5rem;
+    }
+
+    .loc-results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .loc-results-table th,
+    .loc-results-table td {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0.35rem 0.5rem;
+      text-align: left;
+      word-break: break-all;
+    }
+
+    .loc-results-table th {
+      background: rgba(10, 18, 46, 0.9);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    @media (max-width: 800px) {
+      .loc-main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      header .container { padding-top: 1.5rem; }
+      header h1 { font-size: 1.9rem; }
+      .card { margin-top: 1.5rem; padding: 1.5rem; }
+    }
+
+    @media(max-width: 600px){
+      .row { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Gated area wrapper (shown only after access granted) -->
+<div id="protectedArea" class="hidden">
+  <div id="backupsContainer" class="loc-container">
+    <header class="loc-header">
+      <h2 class="loc-title">
+        BackUps <span class="loc-title-accent">by The Refresh</span>
+      </h2>
+      <p class="loc-subtitle">
+        Create a quick snapshot backup of the assets in your connected wallet for a specific policy ID.
+      </p>
+    </header>
+
+    <section class="loc-status-block">
+      <p class="loc-status loc-status-ok">
+        Connected wallet: <span id="backupsWalletShort">–</span><br/>
+        Access type: <span id="backupsAccessType">–</span>
+      </p>
+    </section>
+
+    <section class="loc-main">
+      <!-- LEFT: controls -->
+      <div class="loc-column">
+        <div class="loc-card">
+          <h3>Scan settings</h3>
+
+          <label class="loc-field">
+            <span>Policy ID to scan</span>
+            <input id="backupsPolicyInput"
+                   type="text"
+                   placeholder="Paste a 56-character policy ID (no spaces)"/>
+          </label>
+
+          <button type="button" id="backupsScanBtn" class="loc-btn-primary">
+            Scan connected wallet
+          </button>
+
+          <p class="loc-hint">
+            Your wallet stays in your control. BackUps only reads your asset list via Blockfrost,
+            using the connected wallet’s stake key. No seed phrases, no private keys.
+          </p>
+
+          <p id="backupsScanStatus" class="loc-tx-status"></p>
+        </div>
+      </div>
+
+      <!-- RIGHT: results -->
+      <div class="loc-column">
+        <div class="loc-card">
+          <h3>Scan results</h3>
+          <div id="backupsResultsSummary" class="loc-field">
+            <span>No scan yet. Enter a policy ID and press “Scan connected wallet”.</span>
+          </div>
+
+          <div class="table-wrapper">
+            <table id="backupsResultsTable" class="loc-results-table hidden">
+              <thead>
+                <tr>
+                  <th>Asset Name (ASCII)</th>
+                  <th>Quantity</th>
+                  <th>Full Unit (policy + hex name)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;">
+            <button type="button"
+                    id="backupsExportJsonBtn"
+                    class="loc-btn-secondary"
+                    disabled>
+              Export JSON
+            </button>
+            <button type="button"
+                    id="backupsExportTextBtn"
+                    class="loc-btn-secondary"
+                    disabled>
+              Export Text
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- WALLET GATE OVERLAY -->
+<div id="gateOverlay">
+  <img src="RF5.png" alt="Fre5h Logo" class="brand-logo">
+
+  <header>
+    <div class="container">
+      <h1>BackUps Access</h1>
+
+      <p id="description">BackUps is free for The Refresh holders. Others can unlock 30 days for 5₳.</p>
+      <p id="instructions"></p>
+
+      <div class="row" id="connectRow">
+        <select id="walletSelect">
+          <option value="">Select Wallet…</option>
+        </select>
+        <button id="connectBtn" disabled>Connect Wallet</button>
+      </div>
+
+      <div id="walletStatus" class="hidden"></div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Access Gate</h2>
+      <p class="access-message">
+        The Refresh hodlers have no access charge. 5₳ for 30 days access for all others.
+      </p>
+
+      <p id="gateBlurb"></p>
+      <p id="accessMessage" class="access-message"></p>
+
+      <!-- Shown only if policy requirements are NOT met -->
+      <button id="payAccessBtn" style="display:none;">
+        Pay 5₳ for 30 days access
+      </button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import {
+  BrowserWallet,
+  Transaction,
+} from 'https://esm.sh/@meshsdk/core@1.9.0-beta.62?bundle';
+
+const sel           = document.getElementById('walletSelect');
+const btn           = document.getElementById('connectBtn');
+const walletStatus  = document.getElementById('walletStatus');
+const accessMessage = document.getElementById('accessMessage');
+const gateOverlay   = document.getElementById('gateOverlay');
+const protectedArea = document.getElementById('protectedArea');
+
+const instructionsEl = document.getElementById('instructions');
+const gateBlurbEl    = document.getElementById('gateBlurb');
+const payAccessBtn   = document.getElementById('payAccessBtn');
+
+// TODO: replace with your real receive address (no extra text)
+const GATE_RECIPIENT_ADDRESS =
+  'addr1q9m2reerla2ccrkwz57rhwl7q8vj8y38x39nv4mq56ppjqmzs7jlke6nm3thlvvddtsnp52s62u0337y9h6d2gmma2wsmjx8nh';
+
+// =========================================================
+// Pricing / Fees
+// =========================================================
+const ACCESS_PASS_FEE_ADA   = 5; // gate fee for non-holders
+const ACCESS_PASS_FEE_LOVELACE  = String(ACCESS_PASS_FEE_ADA * 1_000_000);
+
+// =========================================================
+// Blockfrost config for BackUps
+// =========================================================
+const BLOCKFROST_ENDPOINT   = 'https://cardano-mainnet.blockfrost.io/api/v0';
+// 🔐 IMPORTANT: put your mainnet Blockfrost project key here
+const BLOCKFROST_PROJECT_ID = 'mainnetehvvvJVoJUAz5DFJJz2L9fHZmkXlXTMP'; // e.g. 'mainnetXXXXX...'
+
+// =========================================================
+// Fre5h / The Refresh holder access requirements
+// =========================================================
+const ACCESS_POLICIES = [
+  {
+    policyId: 'adc5716393953403109c335e68c0384238fd19653e960e03afa1fb1f',
+    minAssets: 1,
+    label: 'OG The Refresh',
+    purchaseUrl: 'https://www.jpg.store/collection/therefresh'
+  }
+];
+
+// mesh / identity state
+let meshWallet, userAddress, userIdentity;
+let locPassDaysLeft = null; // still used for 30-day pass
+
+// BackUps state
+let backupsInitialized = false;
+let backupsStakeAddress = null;
+let backupsLastResults = [];
+
+// ---------------------------------------------------------
+// Helper text for gate
+// ---------------------------------------------------------
+function buildRequirementsLine() {
+  return ACCESS_POLICIES
+    .map(p => `${p.minAssets} ${p.label}`)
+    .join(' + ');
+}
+
+function buildRequirementsDetail(foundMap) {
+  return ACCESS_POLICIES
+    .map(p => {
+      const found = foundMap[p.policyId] ?? 0;
+      return `${p.label}: ${found} / ${p.minAssets}`;
+    })
+    .join('\n');
+}
+
+function getPrimaryPurchaseUrl() {
+  return (ACCESS_POLICIES[0] && ACCESS_POLICIES[0].purchaseUrl) || 'https://www.jpg.store/';
+}
+
+// Set gate text
+instructionsEl.textContent = `Connect a Cardano wallet to continue.`;
+gateBlurbEl.textContent =
+  `If your wallet holds at least ${buildRequirementsLine()}, you have free BackUps access. ` +
+  `Otherwise, you can unlock 30 days access for ${ACCESS_PASS_FEE_ADA}₳.`;
+
+// ---------------------------------------------------------
+// Mesh wallet detection
+// ---------------------------------------------------------
+async function detect() {
+  try {
+    const wallets = await BrowserWallet.getInstalledWallets();
+
+    if (!wallets.length) {
+      sel.innerHTML = '<option>(no wallets detected)</option>';
+      return;
+    }
+
+    // Prefer "mesh" if present
+    wallets.sort((a, b) =>
+      a.id === 'mesh' ? -1 : b.id === 'mesh' ? 1 : 0
+    );
+
+    sel.innerHTML = wallets
+      .map((w) => `<option value="${w.id}">${w.name}</option>`)
+      .join('');
+
+    sel.value = wallets[0].id;
+    btn.disabled = false;
+  } catch (err) {
+    console.error('Wallet detection failed:', err);
+    sel.innerHTML = '<option>(wallet detection failed)</option>';
+  }
+}
+
+// ---------------------------------------------------------
+// Paid access tracking via loc_access.php (unchanged)
+// ---------------------------------------------------------
+async function checkPaidAccessStatus() {
+  if (!userIdentity) return null;
+
+  try {
+    const res = await fetch('loc_access.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'check',
+        identity: userIdentity,
+      }),
+    });
+
+    if (!res.ok) {
+      console.error('[BackUps] checkPaidAccessStatus HTTP error:', res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    console.log('[BackUps] checkPaidAccessStatus response:', data);
+
+    if (data.status === 'active') {
+      return data; // { status, lastPaidDate, expiresOn }
+    }
+
+    return null;
+  } catch (err) {
+    console.error('[BackUps] checkPaidAccessStatus error:', err);
+    return null;
+  }
+}
+
+async function logPaidAccess(txHash) {
+  if (!userIdentity) return;
+
+  try {
+    const res = await fetch('loc_access.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'log',
+        identity: userIdentity,
+        txHash,
+      }),
+    });
+
+    const data = await res.json().catch(() => null);
+    console.log('[BackUps] logPaidAccess response:', data);
+  } catch (err) {
+    console.error('[BackUps] logPaidAccess error:', err);
+  }
+}
+
+// ---------------------------------------------------------
+// Small helpers
+// ---------------------------------------------------------
+function shortenAddress(addr) {
+  if (!addr || typeof addr !== 'string') return '–';
+  if (addr.length <= 16) return addr;
+  return addr.slice(0, 8) + '…' + addr.slice(-8);
+}
+
+function asciiToHex(str) {
+  return Array.from(str, ch =>
+    ch.charCodeAt(0).toString(16).padStart(2, '0')
+  ).join('');
+}
+
+function hexToAscii(hex) {
+  if (!hex || typeof hex !== 'string') return '';
+  let str = '';
+  for (let i = 0; i < hex.length; i += 2) {
+    const code = parseInt(hex.slice(i, i + 2), 16);
+    if (!Number.isNaN(code)) {
+      str += String.fromCharCode(code);
+    }
+  }
+  return str;
+}
+
+// ---------------------------------------------------------
+// Blockfrost UTXO scan helpers for BackUps
+// ---------------------------------------------------------
+async function fetchAllUtxosForStake(stakeAddress) {
+  if (!BLOCKFROST_PROJECT_ID) {
+    throw new Error('Blockfrost project ID is not configured.');
+  }
+  let page = 1;
+  let all = [];
+
+  while (true) {
+    const res = await fetch(
+      `${BLOCKFROST_ENDPOINT}/accounts/${stakeAddress}/utxos?page=${page}`,
+      { headers: { project_id: BLOCKFROST_PROJECT_ID } }
+    );
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Blockfrost error ${res.status}: ${text}`);
+    }
+
+    const chunk = await res.json();
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+
+    all = all.concat(chunk);
+    page++;
+  }
+
+  return all;
+}
+
+function renderBackupsResults(policyId) {
+  const table    = document.getElementById('backupsResultsTable');
+  const tbody    = table?.querySelector('tbody');
+  const summary  = document.getElementById('backupsResultsSummary');
+  const exportJ  = document.getElementById('backupsExportJsonBtn');
+  const exportT  = document.getElementById('backupsExportTextBtn');
+
+  if (!table || !tbody || !summary || !exportJ || !exportT) return;
+
+  tbody.innerHTML = '';
+
+  if (!backupsLastResults.length) {
+    table.classList.add('hidden');
+    summary.innerHTML = '<span>No assets found for this policy in your connected wallet.</span>';
+    exportJ.disabled = true;
+    exportT.disabled = true;
+    return;
+  }
+
+  // sort by assetName asc
+  backupsLastResults.sort((a, b) =>
+    (a.assetName || '').localeCompare(b.assetName || '')
+  );
+
+  for (const row of backupsLastResults) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${row.assetName || '(no ASCII name)'}</td>
+      <td>${row.quantity}</td>
+      <td>${row.unit}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  table.classList.remove('hidden');
+  summary.innerHTML =
+    `<span>Found <strong>${backupsLastResults.length}</strong> unique asset(s)` +
+    ` under policy <code>${policyId}</code> in the connected wallet.</span>`;
+
+  exportJ.disabled = false;
+  exportT.disabled = false;
+}
+
+async function backupsScanForPolicy() {
+  const statusEl  = document.getElementById('backupsScanStatus');
+  const policyEl  = document.getElementById('backupsPolicyInput');
+  const exportJ   = document.getElementById('backupsExportJsonBtn');
+  const exportT   = document.getElementById('backupsExportTextBtn');
+  const table     = document.getElementById('backupsResultsTable');
+  const tbody     = table?.querySelector('tbody');
+
+  if (statusEl) statusEl.textContent = '';
+  if (tbody) tbody.innerHTML = '';
+  backupsLastResults = [];
+  exportJ.disabled = true;
+  exportT.disabled = true;
+  table?.classList.add('hidden');
+
+  if (!meshWallet || !userAddress) {
+    if (statusEl) statusEl.textContent = 'Wallet not ready. Please reconnect.';
+    return;
+  }
+
+  if (!backupsStakeAddress) {
+    if (statusEl) statusEl.textContent =
+      'Could not determine stake address for this wallet. Some wallets may not expose it.';
+    return;
+  }
+
+  const rawPolicy = (policyEl?.value || '').trim();
+  if (!rawPolicy) {
+    if (statusEl) statusEl.textContent = 'Enter a policy ID to scan.';
+    return;
+  }
+  if (rawPolicy.length !== 56) {
+    if (statusEl) statusEl.textContent =
+      'Policy ID length looks unusual. It should typically be 56 hex characters.';
+    // still allow scan, in case of test cases
+  }
+
+  if (!BLOCKFROST_PROJECT_ID) {
+    if (statusEl) statusEl.textContent =
+      'Blockfrost project ID is not set in the code. Please configure BLOCKFROST_PROJECT_ID.';
+    return;
+  }
+
+  try {
+    if (statusEl) statusEl.textContent = 'Scanning wallet via Blockfrost…';
+
+    const utxos = await fetchAllUtxosForStake(backupsStakeAddress);
+
+    const byUnit = new Map();
+
+    for (const utxo of utxos) {
+      if (!utxo || !Array.isArray(utxo.amount)) continue;
+      for (const amt of utxo.amount) {
+        if (!amt || !amt.unit || amt.unit === 'lovelace') continue;
+        if (!amt.unit.startsWith(rawPolicy)) continue;
+
+        const prev = byUnit.get(amt.unit) || 0n;
+        const qty  = BigInt(amt.quantity ?? '0');
+        byUnit.set(amt.unit, prev + qty);
+      }
+    }
+
+    backupsLastResults = [];
+
+    for (const [unit, qtyBig] of byUnit.entries()) {
+      const policyHex = unit.slice(0, 56);
+      const nameHex   = unit.slice(56);
+      const assetName = nameHex ? hexToAscii(nameHex) : '';
+      backupsLastResults.push({
+        unit,
+        policyId: policyHex,
+        assetName: assetName || '(no ASCII name)',
+        quantity: qtyBig.toString(),
+      });
+    }
+
+    renderBackupsResults(rawPolicy);
+
+    if (statusEl) {
+      statusEl.textContent = backupsLastResults.length
+        ? 'Scan complete.'
+        : 'Scan complete. No assets found for this policy.';
+    }
+
+  } catch (err) {
+    console.error('[BackUps] scan error:', err);
+    if (statusEl) {
+      statusEl.textContent =
+        'An error occurred while scanning. Check console for details.';
+    }
+  }
+}
+
+function exportBackupsJson() {
+  if (!backupsLastResults.length) return;
+  const blob = new Blob(
+    [JSON.stringify(backupsLastResults, null, 2)],
+    { type: 'application/json' }
+  );
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href = url;
+  a.download = 'backups-assets.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportBackupsText() {
+  if (!backupsLastResults.length) return;
+  const lines = backupsLastResults.map(r =>
+    `${r.assetName || '(no ASCII name)'}\t${r.quantity}\t${r.unit}`
+  );
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'backups-assets.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------------------------------------------------------
+// Initialize BackUps app after gate
+// (keeps existing initLocApp entry point name to avoid touching gate logic)
+// ---------------------------------------------------------
+async function initLocApp(accessVia) {
+  if (backupsInitialized) return;
+  backupsInitialized = true;
+
+  if (!meshWallet) return;
+
+  if (!userAddress) {
+    userAddress = await meshWallet.getChangeAddress();
+  }
+
+  // Derive stake address (used for Blockfrost account UTXOs)
+  try {
+    if (userIdentity && userIdentity.startsWith('stake')) {
+      backupsStakeAddress = userIdentity;
+    } else if (meshWallet.getRewardAddresses) {
+      const rewardAddrs = await meshWallet.getRewardAddresses();
+      if (Array.isArray(rewardAddrs) && rewardAddrs.length > 0) {
+        backupsStakeAddress = rewardAddrs[0];
+      }
+    }
+  } catch (e) {
+    console.warn('[BackUps] Could not derive stake address from wallet:', e);
+  }
+
+  const walletShortEl = document.getElementById('backupsWalletShort');
+  const accessTypeEl  = document.getElementById('backupsAccessType');
+
+  if (walletShortEl) walletShortEl.textContent = shortenAddress(userAddress);
+
+  if (accessTypeEl) {
+    if (accessVia === 'pass') {
+      let label = 'Paid BackUps access (30-day pass).';
+      if (typeof locPassDaysLeft === 'number' && !Number.isNaN(locPassDaysLeft)) {
+        const days = Math.max(0, Math.round(locPassDaysLeft));
+        label = `Paid BackUps access – ${days} day${days === 1 ? '' : 's'} left.`;
+      }
+      accessTypeEl.textContent = label;
+    } else {
+      accessTypeEl.textContent = 'Free access via OG The Refresh holdings.';
+    }
+  }
+
+  // Wire BackUps buttons
+  const scanBtn  = document.getElementById('backupsScanBtn');
+  const exportJ  = document.getElementById('backupsExportJsonBtn');
+  const exportT  = document.getElementById('backupsExportTextBtn');
+
+  scanBtn?.addEventListener('click', backupsScanForPolicy);
+  exportJ?.addEventListener('click', exportBackupsJson);
+  exportT?.addEventListener('click', exportBackupsText);
+}
+
+// ---------------------------------------------------------
+// Gate: check policy assets & paid pass
+// ---------------------------------------------------------
+async function checkPolicyAssets() {
+  if (!meshWallet) return;
+
+  walletStatus.classList.remove('hidden');
+  walletStatus.textContent = 'Checking Wallet…';
+  accessMessage.textContent = '';
+  accessMessage.classList.remove('error');
+
+  try {
+    const assets = await meshWallet.getAssets();
+    console.log('[BackUps Gate] Assets:', assets);
+
+    const required = Object.create(null);
+    for (const p of ACCESS_POLICIES) required[p.policyId] = 0;
+
+    for (const asset of assets) {
+      if (asset && required[asset.policyId] !== undefined) {
+        required[asset.policyId]++;
+      }
+    }
+
+    const unmet = ACCESS_POLICIES.filter(
+      p => (required[p.policyId] || 0) < p.minAssets
+    );
+
+    if (unmet.length === 0) {
+      const detail = buildRequirementsDetail(required);
+
+      walletStatus.textContent =
+        `✅ Access granted.\n${detail}`;
+
+      accessMessage.classList.remove('error');
+      accessMessage.innerHTML = `<strong>Access granted. Loading BackUps…</strong>`;
+
+      // Hide the 5₳ button because they don't need it
+      payAccessBtn.style.display = 'none';
+
+      // SHOW PROTECTED AREA, HIDE GATE
+      protectedArea.classList.remove('hidden');
+      gateOverlay.classList.add('hidden');
+      initLocApp('holder');
+    } else {
+      const detail = buildRequirementsDetail(required);
+      walletStatus.textContent = detail;
+
+      // Check if this wallet already has an active 30-day pass
+      let passInfo = null;
+      if (userIdentity) {
+        passInfo = await checkPaidAccessStatus();
+      }
+
+      if (passInfo && passInfo.status === 'active') {
+        walletStatus.textContent =
+          `BackUps access active (5₳ pass).\nExpires: ${passInfo.expiresOn}`;
+
+        // Compute days left from expiresOn, if possible
+        let daysLeft = null;
+        if (passInfo.expiresOn) {
+          const expiresMs = Date.parse(passInfo.expiresOn);
+          if (!Number.isNaN(expiresMs)) {
+            const diffMs = expiresMs - Date.now();
+            daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+          }
+        }
+        locPassDaysLeft = daysLeft;
+
+        accessMessage.classList.remove('error');
+        accessMessage.innerHTML =
+          `<strong>Access granted via paid BackUps pass. Loading BackUps…</strong>`;
+
+        payAccessBtn.style.display = 'none';
+
+        protectedArea.classList.remove('hidden');
+        gateOverlay.classList.add('hidden');
+        initLocApp('pass');
+        return;
+      }
+
+      accessMessage.classList.add('error');
+      accessMessage.innerHTML =
+        `You don’t yet meet the free BackUps holder requirements.<br>` +
+        `<a href="${getPrimaryPurchaseUrl()}" target="_blank" rel="noopener noreferrer">
+           Purchase Assets
+         </a> or pay ${ACCESS_PASS_FEE_ADA}₳ for 30 days access below.`;
+
+      payAccessBtn.style.display = 'inline-flex';
+    }
+
+  } catch (err) {
+    console.error(err);
+    walletStatus.textContent = 'Error checking wallet assets.';
+    accessMessage.classList.add('error');
+    accessMessage.textContent = 'An error occurred while checking your wallet. Please try again.';
+  }
+}
+
+// ---------------------------------------------------------
+// Pay 5₳ for 30 days BackUps access
+// ---------------------------------------------------------
+async function payForLocAccess() {
+  if (!meshWallet) {
+    alert('Connect a wallet first.');
+    return;
+  }
+
+  if (!GATE_RECIPIENT_ADDRESS) {
+    alert('Gate recipient address is not configured yet.\n\nPlease set GATE_RECIPIENT_ADDRESS in the code.');
+    return;
+  }
+
+  try {
+    payAccessBtn.disabled = true;
+    payAccessBtn.textContent = 'Preparing payment…';
+    accessMessage.classList.remove('error');
+    accessMessage.textContent = `Building ${ACCESS_PASS_FEE_ADA}₳ BackUps access transaction…`;
+
+    const tx = new Transaction({ initiator: meshWallet });
+
+    // gate fee in lovelace
+    tx.sendLovelace(GATE_RECIPIENT_ADDRESS, ACCESS_PASS_FEE_LOVELACE);
+
+    if (!userAddress) {
+      userAddress = await meshWallet.getChangeAddress();
+    }
+    tx.setChangeAddress(userAddress);
+
+    const unsignedTx = await tx.build();
+    const signedTx   = await meshWallet.signTx(unsignedTx);
+    const txHash     = await meshWallet.submitTx(signedTx);
+
+    console.log('[BackUps] Access payment tx hash:', txHash);
+
+    await logPaidAccess(txHash);
+
+    walletStatus.textContent = `BackUps access paid. Tx: ${txHash}`;
+    accessMessage.classList.remove('error');
+    accessMessage.innerHTML = `<strong>Access granted. Welcome to BackUps.</strong>`;
+
+    // 30-day pass; keep this in sync with your PHP logic
+    locPassDaysLeft = 30;
+
+    protectedArea.classList.remove('hidden');
+    gateOverlay.classList.add('hidden');
+    initLocApp('pass');
+
+  } catch (err) {
+    console.error('[BackUps] payForLocAccess error:', err);
+    accessMessage.classList.add('error');
+    accessMessage.textContent =
+      'Payment failed or was rejected. No funds were taken. You can try again.';
+  } finally {
+    payAccessBtn.disabled = false;
+    payAccessBtn.textContent = `Pay ${ACCESS_PASS_FEE_ADA}₳ for 30 days access`;
+  }
+}
+
+// ---------------------------------------------------------
+// Connect wallet via Mesh
+// ---------------------------------------------------------
+async function connect() {
+  const walletId = sel.value;
+  if (!walletId) {
+    alert('Select a wallet');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+
+  try {
+    meshWallet  = await BrowserWallet.enable(walletId);
+    userAddress = await meshWallet.getChangeAddress();
+
+    // Try to use the reward (stake) address as the login identity, fallback to payment address
+    try {
+      const rewardAddrs = await meshWallet.getRewardAddresses?.();
+      if (Array.isArray(rewardAddrs) && rewardAddrs.length > 0) {
+        userIdentity = rewardAddrs[0];
+      } else {
+        userIdentity = userAddress;
+      }
+    } catch (e) {
+      console.warn('[BackUps] getRewardAddresses not available, using payment address as identity.');
+      userIdentity = userAddress;
+    }
+
+    btn.textContent = `Connected: ${walletId}`;
+    sel.disabled = true;
+
+    await checkPolicyAssets();
+
+  } catch (e) {
+    console.error('Wallet connection failed:', e);
+
+    let humanMsg =
+      'Connection failed.\n\n' +
+      '• If your wallet uses a PIN/password, open the wallet extension/app and unlock it first.\n' +
+      '• Then come back here and press "Connect Wallet" again.';
+
+    if (e && e.message) {
+      humanMsg = `Connection failed: ${e.message}\n\n` + humanMsg;
+    }
+
+    alert(humanMsg);
+    btn.textContent = 'Connect Wallet';
+    btn.disabled = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', detect);
+btn.addEventListener('click', connect);
+payAccessBtn.addEventListener('click', payForLocAccess);
+</script>
+
+</body>
+</html>
