@@ -602,14 +602,31 @@ gateBlurbEl.textContent =
   `Otherwise, you can unlock 30 days access for ${ACCESS_PASS_FEE_ADA}₳.`;
 
 // ---------------------------------------------------------
-// Mesh wallet detection
+// ---------------------------------------------------------
+// Mesh wallet detection (with fallback list for mobile)
 // ---------------------------------------------------------
 async function detect() {
+  // Fallback: show common wallets even if getInstalledWallets() returns empty
+  const fallbackOptionsHtml = `
+    <option value="">Select Wallet…</option>
+    <option value="eternl">Eternl</option>
+    <option value="nami">Nami</option>
+    <option value="lace">Lace</option>
+    <option value="flint">Flint</option>
+    <option value="typhoncip30">Typhon</option>
+    <option value="gerowallet">Gero</option>
+    <option value="yoroi">Yoroi</option>
+    <option value="nufi">NuFi</option>
+    <option value="vespr">Vespr</option>
+  `;
+
   try {
     const wallets = await BrowserWallet.getInstalledWallets();
 
     if (!wallets.length) {
-      sel.innerHTML = '<option>(no wallets detected)</option>';
+      // No auto-detected wallets – use static list so mobile still works
+      sel.innerHTML = fallbackOptionsHtml;
+      btn.disabled = false;
       return;
     }
 
@@ -625,8 +642,9 @@ async function detect() {
     sel.value = wallets[0].id;
     btn.disabled = false;
   } catch (err) {
-    console.error('Wallet detection failed:', err);
-    sel.innerHTML = '<option>(wallet detection failed)</option>';
+    console.error('Wallet detection failed, using fallback list:', err);
+    sel.innerHTML = fallbackOptionsHtml;
+    btn.disabled = false;
   }
 }
 
