@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,6 +41,8 @@
       flex-direction: column;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
+      background: radial-gradient(circle at top left, #202738 0, #050810 55%, #020308 100%);
+      color: #e4e8ff;
     }
 
     header {
@@ -67,11 +68,14 @@
     #instructions {
       font-size: 1rem;
       margin: 1rem 0;
+      color: #a9b5ff;
     }
 
     #walletStatus {
-      background: rgba(255,255,255,0.15);
-      border-radius: 50px;
+      background: rgba(9, 16, 40, 0.9);
+      border-radius: 999px;
+      border: 1px solid rgba(106, 255, 183, 0.4);
+      color: #a7ffcb;
       padding: 0.5rem 1.5rem;
       display: inline-block;
       margin-top: 1rem;
@@ -87,9 +91,14 @@
     }
 
     .card {
-      background: var(--card-bg);
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      background: rgba(5, 10, 24, 0.9);
+      border-radius: 18px;
+      border: 1px solid rgba(120, 141, 255, 0.25);
+      box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.75),
+        0 0 0 1px rgba(255, 255, 255, 0.02);
+      color: #e4e8ff;
+      backdrop-filter: blur(10px);
       padding: 2rem;
       margin: 2rem auto;
     }
@@ -117,13 +126,16 @@
     }
 
     #connectBtn {
-      background: white;
-      color: var(--primary);
+      background: linear-gradient(135deg, #ff3366, #ffc857);
+      color: #050814;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+      border-radius: 999px;
     }
 
     #connectBtn:hover {
-      background: #f5f5f5;
-      transform: translateY(-2px);
+      background: linear-gradient(135deg, #ff4b80, #ffd46b);
+      transform: translateY(-1px) scale(1.01);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.7);
     }
 
     #connectBtn:disabled {
@@ -132,17 +144,28 @@
       transform: none;
     }
 
+    #payAccessBtn {
+      margin-top: 0.75rem;
+      background: linear-gradient(135deg, #21cbf3, #7cffb3);
+      color: #050814;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+      border-radius: 999px;
+    }
+
+    #payAccessBtn:hover {
+      transform: translateY(-1px) scale(1.01);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7);
+    }
+
     select, input {
       padding: 0.8rem;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 999px;
       font-size: 1rem;
       width: 100%;
-    }
-
-    select {
-      flex: 1;
-      background: white;
+      background: rgba(3, 7, 20, 0.9);
+      border-color: rgba(96, 125, 255, 0.6);
+      color: #e4e8ff;
     }
 
     .hidden { display: none !important; }
@@ -150,22 +173,16 @@
     .access-message {
       margin-top: 1rem;
       font-size: 1rem;
-      color: var(--text-light);
+      color: #b7c3ff;
       white-space: pre-line;
     }
 
     .access-message strong { color: var(--success); }
-    .access-message.error { color: var(--error); }
+    .access-message.error { color: #ff8b94; }
 
     .access-message a {
-      color: var(--primary-dark);
+      color: #ffc857;
       text-decoration: underline;
-    }
-
-    /* --- Refreshed wallet gate look --- */
-    #gateOverlay {
-      background: radial-gradient(circle at top left, #202738 0, #050810 55%, #020308 100%);
-      color: #e4e8ff;
     }
 
     header .container {
@@ -194,74 +211,7 @@
       letter-spacing: 0.04em;
     }
 
-    #description {
-      font-size: 1rem;
-      opacity: 0.9;
-    }
-
-    #instructions {
-      font-size: 0.95rem;
-      color: #a9b5ff;
-    }
-
-    .card {
-      background: rgba(5, 10, 24, 0.9);
-      border-radius: 18px;
-      border: 1px solid rgba(120, 141, 255, 0.25);
-      box-shadow:
-        0 20px 40px rgba(0, 0, 0, 0.75),
-        0 0 0 1px rgba(255, 255, 255, 0.02);
-      color: #e4e8ff;
-      backdrop-filter: blur(10px);
-    }
-
-    .row { margin-top: 0.5rem; }
-
-    select, #connectBtn { border-radius: 999px; }
-
-    select {
-      background: rgba(3, 7, 20, 0.9);
-      border: 1px solid rgba(96, 125, 255, 0.6);
-      color: #e4e8ff;
-    }
-
-    #connectBtn {
-      background: linear-gradient(135deg, #ff3366, #ffc857);
-      color: #050814;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
-    }
-
-    #connectBtn:hover {
-      background: linear-gradient(135deg, #ff4b80, #ffd46b);
-      transform: translateY(-1px) scale(1.01);
-      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.7);
-    }
-
-    #payAccessBtn {
-      margin-top: 0.75rem;
-      background: linear-gradient(135deg, #21cbf3, #7cffb3);
-      color: #050814;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
-      border-radius: 999px;
-    }
-
-    #payAccessBtn:hover {
-      transform: translateY(-1px) scale(1.01);
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.7);
-    }
-
-    #walletStatus {
-      background: rgba(9, 16, 40, 0.9);
-      border-radius: 999px;
-      border: 1px solid rgba(106, 255, 183, 0.4);
-      color: #a7ffcb;
-    }
-
-    .access-message { color: #b7c3ff; }
-    .access-message.error { color: #ff8b94; }
-    .access-message a { color: #ffc857; }
-
-    /* Shared gated area layout (re-using existing LOC styles) */
+    /* Gated area layout */
     .loc-container {
       display: flex;
       flex-direction: column;
@@ -350,14 +300,9 @@
       opacity: 0.85;
     }
 
-    .loc-field input,
-    .loc-field textarea {
-      background: rgba(3, 7, 20, 0.9);
-      border: 1px solid rgba(96, 125, 255, 0.5);
+    .loc-field input {
       border-radius: 0.6rem;
       padding: 0.55rem 0.7rem;
-      font-size: 0.9rem;
-      color: #e4e8ff;
     }
 
     .loc-btn-primary,
@@ -401,7 +346,6 @@
       opacity: 0.9;
     }
 
-    /* BackUps results table */
     .table-wrapper {
       max-height: 260px;
       overflow: auto;
@@ -439,9 +383,6 @@
       header .container { padding-top: 1.5rem; }
       header h1 { font-size: 1.9rem; }
       .card { margin-top: 1.5rem; padding: 1.5rem; }
-    }
-
-    @media(max-width: 600px){
       .row { flex-direction: column; align-items: stretch; }
     }
   </style>
@@ -456,7 +397,7 @@
         BackUps <span class="loc-title-accent">by The Refresh</span>
       </h2>
       <p class="loc-subtitle">
-        Create a quick snapshot backup of the assets in your connected wallet for a specific policy ID.
+        One-click backup of all assets under a policy ID. No wallet scan, chain-wide view.
       </p>
     </header>
 
@@ -471,34 +412,34 @@
       <!-- LEFT: controls -->
       <div class="loc-column">
         <div class="loc-card">
-          <h3>Scan settings</h3>
+          <h3>Scan a policy</h3>
 
           <label class="loc-field">
-            <span>Policy ID to scan</span>
+            <span>Policy ID to backup</span>
             <input id="backupsPolicyInput"
                    type="text"
                    placeholder="Paste a 56-character policy ID (no spaces)"/>
           </label>
 
           <button type="button" id="backupsScanBtn" class="loc-btn-primary">
-            Scan connected wallet
+            Scan policy on chain
           </button>
 
           <p class="loc-hint">
-            Your wallet stays in your control. BackUps only reads your asset list via Blockfrost,
-            using the connected wallet’s stake key. No seed phrases, no private keys.
+            BackUps queries Blockfrost for all assets under this policy and grabs every
+            on-chain metadata property it finds. No wallet contents are scanned for this step.
           </p>
 
           <p id="backupsScanStatus" class="loc-tx-status"></p>
         </div>
       </div>
 
-      <!-- RIGHT: results -->
+      <!-- RIGHT: results + ZIP export -->
       <div class="loc-column">
         <div class="loc-card">
-          <h3>Scan results</h3>
+          <h3>Results & export</h3>
           <div id="backupsResultsSummary" class="loc-field">
-            <span>No scan yet. Enter a policy ID and press “Scan connected wallet”.</span>
+            <span>No scan yet. Paste a policy ID and press “Scan policy on chain”.</span>
           </div>
 
           <div class="table-wrapper">
@@ -507,25 +448,19 @@
                 <tr>
                   <th>Asset Name (ASCII)</th>
                   <th>Quantity</th>
-                  <th>Full Unit (policy + hex name)</th>
+                  <th>Full Unit</th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
 
-          <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;">
+          <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem;">
             <button type="button"
-                    id="backupsExportJsonBtn"
+                    id="backupsDownloadZipBtn"
                     class="loc-btn-secondary"
                     disabled>
-              Export JSON
-            </button>
-            <button type="button"
-                    id="backupsExportTextBtn"
-                    class="loc-btn-secondary"
-                    disabled>
-              Export Text
+              Download BackUps .zip
             </button>
           </div>
         </div>
@@ -574,6 +509,14 @@
   </div>
 </div>
 
+<!-- JSZip + FileSaver for ZIP export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"
+        integrity="sha512-vVqQDo+Z2zrvFDAR1lK3U3c1ewHLEg4xzf0iVW9vdTYbA+gseuT7J1sLJQ6oYF2UlR2aX6vB+lbEDC1fQH7c7g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"
+        integrity="sha512-vqEJVO8z9WXBJgp7wa9u0J7pKnz03Wx/89ZbduCMsZ/HXXIQK5vCq1vZ1tcHTfb3e8Dqg3O89iEgvp7Wf3gS7w=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
 <script type="module">
 import {
   BrowserWallet,
@@ -598,14 +541,14 @@ const GATE_RECIPIENT_ADDRESS =
 // =========================================================
 // Pricing / Fees
 // =========================================================
-const ACCESS_PASS_FEE_ADA   = 5; // gate fee for non-holders
+const ACCESS_PASS_FEE_ADA       = 5;
 const ACCESS_PASS_FEE_LOVELACE  = String(ACCESS_PASS_FEE_ADA * 1_000_000);
 
 // =========================================================
-// Blockfrost config for BackUps
+// Blockfrost config for BackUps (policy-based scan)
 // =========================================================
 const BLOCKFROST_ENDPOINT   = 'https://cardano-mainnet.blockfrost.io/api/v0';
-// 🔐 IMPORTANT: put your mainnet Blockfrost project key here
+// 🔐 IMPORTANT: put your mainnet Blockfrost project key here:
 const BLOCKFROST_PROJECT_ID = 'mainnetehvvvJVoJUAz5DFJJz2L9fHZmkXlXTMP'; // e.g. 'mainnetXXXXX...'
 
 // =========================================================
@@ -622,12 +565,13 @@ const ACCESS_POLICIES = [
 
 // mesh / identity state
 let meshWallet, userAddress, userIdentity;
-let locPassDaysLeft = null; // still used for 30-day pass
+let locPassDaysLeft = null;
 
-// BackUps state
-let backupsInitialized = false;
-let backupsStakeAddress = null;
-let backupsLastResults = [];
+// BackUps state – last scan
+let backupsHasScan = false;
+let backupsLastPolicyId = '';
+let backupsLastRows = [];     // [{ unit, policyId, assetName, quantity, metadata }, ...]
+let backupsLastKeys = [];     // sorted list of all metadata keys
 
 // ---------------------------------------------------------
 // Helper text for gate
@@ -687,7 +631,7 @@ async function detect() {
 }
 
 // ---------------------------------------------------------
-// Paid access tracking via loc_access.php (unchanged)
+// Paid access tracking via loc_access.php (same pattern as LOC)
 // ---------------------------------------------------------
 async function checkPaidAccessStatus() {
   if (!userIdentity) return null;
@@ -751,12 +695,6 @@ function shortenAddress(addr) {
   return addr.slice(0, 8) + '…' + addr.slice(-8);
 }
 
-function asciiToHex(str) {
-  return Array.from(str, ch =>
-    ch.charCodeAt(0).toString(16).padStart(2, '0')
-  ).join('');
-}
-
 function hexToAscii(hex) {
   if (!hex || typeof hex !== 'string') return '';
   let str = '';
@@ -770,9 +708,9 @@ function hexToAscii(hex) {
 }
 
 // ---------------------------------------------------------
-// Blockfrost UTXO scan helpers for BackUps
+// Blockfrost policy-wide scan helpers for BackUps
 // ---------------------------------------------------------
-async function fetchAllUtxosForStake(stakeAddress) {
+async function fetchAllAssetsForPolicy(policyId) {
   if (!BLOCKFROST_PROJECT_ID) {
     throw new Error('Blockfrost project ID is not configured.');
   }
@@ -781,7 +719,7 @@ async function fetchAllUtxosForStake(stakeAddress) {
 
   while (true) {
     const res = await fetch(
-      `${BLOCKFROST_ENDPOINT}/accounts/${stakeAddress}/utxos?page=${page}`,
+      `${BLOCKFROST_ENDPOINT}/assets/policy/${policyId}?page=${page}`,
       { headers: { project_id: BLOCKFROST_PROJECT_ID } }
     );
 
@@ -797,34 +735,53 @@ async function fetchAllUtxosForStake(stakeAddress) {
     page++;
   }
 
-  return all;
+  return all; // each entry has .asset (unit), .quantity, ...
 }
 
-function renderBackupsResults(policyId) {
+async function fetchMetadataForAsset(unit) {
+  const res = await fetch(
+    `${BLOCKFROST_ENDPOINT}/assets/${unit}`,
+    { headers: { project_id: BLOCKFROST_PROJECT_ID } }
+  );
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    console.warn(`Blockfrost /assets/${unit} error ${res.status}: ${text}`);
+    return {};
+  }
+
+  const data = await res.json();
+  return data.onchain_metadata || {};
+}
+
+function renderBackupsResults() {
   const table    = document.getElementById('backupsResultsTable');
   const tbody    = table?.querySelector('tbody');
   const summary  = document.getElementById('backupsResultsSummary');
-  const exportJ  = document.getElementById('backupsExportJsonBtn');
-  const exportT  = document.getElementById('backupsExportTextBtn');
+  const zipBtn   = document.getElementById('backupsDownloadZipBtn');
 
-  if (!table || !tbody || !summary || !exportJ || !exportT) return;
+  if (!table || !tbody || !summary || !zipBtn) return;
 
   tbody.innerHTML = '';
 
-  if (!backupsLastResults.length) {
+  if (!backupsHasScan || !backupsLastRows.length) {
     table.classList.add('hidden');
-    summary.innerHTML = '<span>No assets found for this policy in your connected wallet.</span>';
-    exportJ.disabled = true;
-    exportT.disabled = true;
+    summary.innerHTML =
+      '<span>No assets found for this policy on chain.</span>';
+    zipBtn.disabled = true;
     return;
   }
 
+  const count = backupsLastRows.length;
+  summary.innerHTML =
+    `<span>Found <strong>${count}</strong> asset(s) under policy <code>${backupsLastPolicyId}</code>.</span>`;
+
   // sort by assetName asc
-  backupsLastResults.sort((a, b) =>
+  backupsLastRows.sort((a, b) =>
     (a.assetName || '').localeCompare(b.assetName || '')
   );
 
-  for (const row of backupsLastResults) {
+  for (const row of backupsLastRows) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${row.assetName || '(no ASCII name)'}</td>
@@ -835,49 +792,33 @@ function renderBackupsResults(policyId) {
   }
 
   table.classList.remove('hidden');
-  summary.innerHTML =
-    `<span>Found <strong>${backupsLastResults.length}</strong> unique asset(s)` +
-    ` under policy <code>${policyId}</code> in the connected wallet.</span>`;
-
-  exportJ.disabled = false;
-  exportT.disabled = false;
+  zipBtn.disabled = false;
 }
 
 async function backupsScanForPolicy() {
   const statusEl  = document.getElementById('backupsScanStatus');
   const policyEl  = document.getElementById('backupsPolicyInput');
-  const exportJ   = document.getElementById('backupsExportJsonBtn');
-  const exportT   = document.getElementById('backupsExportTextBtn');
+  const zipBtn    = document.getElementById('backupsDownloadZipBtn');
   const table     = document.getElementById('backupsResultsTable');
   const tbody     = table?.querySelector('tbody');
 
   if (statusEl) statusEl.textContent = '';
+  backupsHasScan       = false;
+  backupsLastPolicyId  = '';
+  backupsLastRows      = [];
+  backupsLastKeys      = [];
+  zipBtn.disabled      = true;
   if (tbody) tbody.innerHTML = '';
-  backupsLastResults = [];
-  exportJ.disabled = true;
-  exportT.disabled = true;
   table?.classList.add('hidden');
-
-  if (!meshWallet || !userAddress) {
-    if (statusEl) statusEl.textContent = 'Wallet not ready. Please reconnect.';
-    return;
-  }
-
-  if (!backupsStakeAddress) {
-    if (statusEl) statusEl.textContent =
-      'Could not determine stake address for this wallet. Some wallets may not expose it.';
-    return;
-  }
 
   const rawPolicy = (policyEl?.value || '').trim();
   if (!rawPolicy) {
     if (statusEl) statusEl.textContent = 'Enter a policy ID to scan.';
     return;
   }
-  if (rawPolicy.length !== 56) {
-    if (statusEl) statusEl.textContent =
-      'Policy ID length looks unusual. It should typically be 56 hex characters.';
-    // still allow scan, in case of test cases
+  if (rawPolicy.length !== 56 && statusEl) {
+    statusEl.textContent =
+      'Policy ID length looks unusual (not 56 chars). Still scanning in case this is test data…';
   }
 
   if (!BLOCKFROST_PROJECT_ID) {
@@ -887,44 +828,57 @@ async function backupsScanForPolicy() {
   }
 
   try {
-    if (statusEl) statusEl.textContent = 'Scanning wallet via Blockfrost…';
+    if (statusEl) statusEl.textContent = 'Scanning policy via Blockfrost…';
 
-    const utxos = await fetchAllUtxosForStake(backupsStakeAddress);
-
-    const byUnit = new Map();
-
-    for (const utxo of utxos) {
-      if (!utxo || !Array.isArray(utxo.amount)) continue;
-      for (const amt of utxo.amount) {
-        if (!amt || !amt.unit || amt.unit === 'lovelace') continue;
-        if (!amt.unit.startsWith(rawPolicy)) continue;
-
-        const prev = byUnit.get(amt.unit) || 0n;
-        const qty  = BigInt(amt.quantity ?? '0');
-        byUnit.set(amt.unit, prev + qty);
-      }
+    const baseAssets = await fetchAllAssetsForPolicy(rawPolicy);
+    if (!baseAssets.length) {
+      backupsHasScan      = true;
+      backupsLastPolicyId = rawPolicy;
+      renderBackupsResults();
+      if (statusEl) statusEl.textContent = 'Scan complete. No assets under this policy.';
+      return;
     }
 
-    backupsLastResults = [];
+    const allKeys = new Set();
+    const rows    = [];
 
-    for (const [unit, qtyBig] of byUnit.entries()) {
+    // fetch metadata for each asset (sequentially; can be optimized later if needed)
+    for (let i = 0; i < baseAssets.length; i++) {
+      const base = baseAssets[i];
+      const unit = base.asset; // full hex unit (policy + name)
+      const quantity = String(base.quantity ?? '0');
+
       const policyHex = unit.slice(0, 56);
       const nameHex   = unit.slice(56);
-      const assetName = nameHex ? hexToAscii(nameHex) : '';
-      backupsLastResults.push({
+      const assetName = hexToAscii(nameHex) || '(no ASCII name)';
+
+      if (statusEl) {
+        statusEl.textContent =
+          `Scanning ${i + 1} / ${baseAssets.length}…`;
+      }
+
+      const metadata = await fetchMetadataForAsset(unit);
+
+      Object.keys(metadata).forEach(k => allKeys.add(k));
+
+      rows.push({
         unit,
         policyId: policyHex,
-        assetName: assetName || '(no ASCII name)',
-        quantity: qtyBig.toString(),
+        assetName,
+        quantity,
+        metadata,
       });
     }
 
-    renderBackupsResults(rawPolicy);
+    backupsHasScan      = true;
+    backupsLastPolicyId = rawPolicy;
+    backupsLastRows     = rows;
+    backupsLastKeys     = Array.from(allKeys).sort();
+
+    renderBackupsResults();
 
     if (statusEl) {
-      statusEl.textContent = backupsLastResults.length
-        ? 'Scan complete.'
-        : 'Scan complete. No assets found for this policy.';
+      statusEl.textContent = 'Scan complete.';
     }
 
   } catch (err) {
@@ -936,64 +890,100 @@ async function backupsScanForPolicy() {
   }
 }
 
-function exportBackupsJson() {
-  if (!backupsLastResults.length) return;
-  const blob = new Blob(
-    [JSON.stringify(backupsLastResults, null, 2)],
-    { type: 'application/json' }
-  );
-  const url = URL.createObjectURL(blob);
-  const a   = document.createElement('a');
-  a.href = url;
-  a.download = 'backups-assets.json';
-  a.click();
-  URL.revokeObjectURL(url);
+function csvEscape(value) {
+  const str = value == null ? '' : String(value);
+  if (/[",\n\r]/.test(str)) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
 }
 
-function exportBackupsText() {
-  if (!backupsLastResults.length) return;
-  const lines = backupsLastResults.map(r =>
-    `${r.assetName || '(no ASCII name)'}\t${r.quantity}\t${r.unit}`
-  );
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = 'backups-assets.txt';
-  a.click();
-  URL.revokeObjectURL(url);
+async function exportBackupsZip() {
+  if (!backupsHasScan || !backupsLastRows.length || !window.JSZip || !window.saveAs) {
+    return;
+  }
+
+  const zip   = new JSZip();
+  const policy = backupsLastPolicyId || 'unknown_policy';
+  const root  = zip.folder(`policy_${policy}`) || zip;
+
+  // 1) assets.json – all raw rows
+  root.file('assets.json', JSON.stringify(backupsLastRows, null, 2));
+
+  // 2) metadata.csv – spreadsheet with all metadata keys
+  const keys = backupsLastKeys;
+  const headers = ['unit', 'assetName', 'quantity', ...keys];
+  const lines = [headers.map(csvEscape).join(',')];
+
+  for (const row of backupsLastRows) {
+    const meta = row.metadata || {};
+    const vals = [
+      row.unit,
+      row.assetName,
+      row.quantity,
+      ...keys.map(k => {
+        const v = meta[k];
+        if (v === null || v === undefined) return '';
+        if (typeof v === 'object') return JSON.stringify(v);
+        return String(v);
+      }),
+    ];
+    lines.push(vals.map(csvEscape).join(','));
+  }
+
+  const csvString = lines.join('\n');
+  root.file('metadata.csv', csvString);
+
+  // 3) by_asset/*.json – one JSON per asset
+  const perAsset = root.folder('by_asset');
+  for (const row of backupsLastRows) {
+    const safeName =
+      row.assetName && /^[a-z0-9_\-]+$/i.test(row.assetName)
+        ? row.assetName
+        : row.unit;
+    perAsset.file(
+      `${safeName}.json`,
+      JSON.stringify(row, null, 2)
+    );
+  }
+
+  // 4) README.txt
+  const readme = [
+    'BackUps by The Refresh',
+    '-----------------------',
+    '',
+    `Policy ID: ${policy}`,
+    '',
+    'Contents:',
+    '- assets.json : All assets under the policy, including metadata per asset.',
+    '- metadata.csv : Spreadsheet-friendly view of all on-chain metadata properties.',
+    '- by_asset/*.json : One JSON file per asset (unit + metadata).',
+    '',
+    'Generated for backup / analysis. No private keys were used or exposed.',
+  ].join('\n');
+  root.file('README.txt', readme);
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const filename = `BackUps_${policy}.zip`;
+  saveAs(blob, filename);
 }
 
 // ---------------------------------------------------------
 // Initialize BackUps app after gate
-// (keeps existing initLocApp entry point name to avoid touching gate logic)
+// (keeping initLocApp name so gate flow stays simple)
 // ---------------------------------------------------------
+let backupsInitialized = false;
 async function initLocApp(accessVia) {
   if (backupsInitialized) return;
   backupsInitialized = true;
 
-  if (!meshWallet) return;
+  const walletShortEl = document.getElementById('backupsWalletShort');
+  const accessTypeEl  = document.getElementById('backupsAccessType');
 
+  if (!meshWallet) return;
   if (!userAddress) {
     userAddress = await meshWallet.getChangeAddress();
   }
-
-  // Derive stake address (used for Blockfrost account UTXOs)
-  try {
-    if (userIdentity && userIdentity.startsWith('stake')) {
-      backupsStakeAddress = userIdentity;
-    } else if (meshWallet.getRewardAddresses) {
-      const rewardAddrs = await meshWallet.getRewardAddresses();
-      if (Array.isArray(rewardAddrs) && rewardAddrs.length > 0) {
-        backupsStakeAddress = rewardAddrs[0];
-      }
-    }
-  } catch (e) {
-    console.warn('[BackUps] Could not derive stake address from wallet:', e);
-  }
-
-  const walletShortEl = document.getElementById('backupsWalletShort');
-  const accessTypeEl  = document.getElementById('backupsAccessType');
 
   if (walletShortEl) walletShortEl.textContent = shortenAddress(userAddress);
 
@@ -1011,13 +1001,11 @@ async function initLocApp(accessVia) {
   }
 
   // Wire BackUps buttons
-  const scanBtn  = document.getElementById('backupsScanBtn');
-  const exportJ  = document.getElementById('backupsExportJsonBtn');
-  const exportT  = document.getElementById('backupsExportTextBtn');
+  const scanBtn = document.getElementById('backupsScanBtn');
+  const zipBtn  = document.getElementById('backupsDownloadZipBtn');
 
   scanBtn?.addEventListener('click', backupsScanForPolicy);
-  exportJ?.addEventListener('click', exportBackupsJson);
-  exportT?.addEventListener('click', exportBackupsText);
+  zipBtn?.addEventListener('click', exportBackupsZip);
 }
 
 // ---------------------------------------------------------
@@ -1057,10 +1045,8 @@ async function checkPolicyAssets() {
       accessMessage.classList.remove('error');
       accessMessage.innerHTML = `<strong>Access granted. Loading BackUps…</strong>`;
 
-      // Hide the 5₳ button because they don't need it
       payAccessBtn.style.display = 'none';
 
-      // SHOW PROTECTED AREA, HIDE GATE
       protectedArea.classList.remove('hidden');
       gateOverlay.classList.add('hidden');
       initLocApp('holder');
@@ -1078,7 +1064,7 @@ async function checkPolicyAssets() {
         walletStatus.textContent =
           `BackUps access active (5₳ pass).\nExpires: ${passInfo.expiresOn}`;
 
-        // Compute days left from expiresOn, if possible
+        // Compute days left
         let daysLeft = null;
         if (passInfo.expiresOn) {
           const expiresMs = Date.parse(passInfo.expiresOn);
@@ -1141,7 +1127,6 @@ async function payForLocAccess() {
 
     const tx = new Transaction({ initiator: meshWallet });
 
-    // gate fee in lovelace
     tx.sendLovelace(GATE_RECIPIENT_ADDRESS, ACCESS_PASS_FEE_LOVELACE);
 
     if (!userAddress) {
@@ -1161,7 +1146,6 @@ async function payForLocAccess() {
     accessMessage.classList.remove('error');
     accessMessage.innerHTML = `<strong>Access granted. Welcome to BackUps.</strong>`;
 
-    // 30-day pass; keep this in sync with your PHP logic
     locPassDaysLeft = 30;
 
     protectedArea.classList.remove('hidden');
@@ -1196,7 +1180,7 @@ async function connect() {
     meshWallet  = await BrowserWallet.enable(walletId);
     userAddress = await meshWallet.getChangeAddress();
 
-    // Try to use the reward (stake) address as the login identity, fallback to payment address
+    // Try reward (stake) address as identity, fallback to payment address
     try {
       const rewardAddrs = await meshWallet.getRewardAddresses?.();
       if (Array.isArray(rewardAddrs) && rewardAddrs.length > 0) {
