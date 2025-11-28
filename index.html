@@ -907,15 +907,12 @@ async function exportBackupsZip() {
   const policy = backupsLastPolicyId || 'unknown_policy';
   const root   = zip.folder(`policy_${policy}`) || zip;
 
-  // 1) assets.json – all raw rows (keep as-is for technical backup)
   // 1) assets.json – simplified array: [{ assetName, metadata }, ...]
   const simpleAssets = backupsLastRows.map(row => ({
     assetName: row.assetName,
     metadata:  row.metadata || {}
   }));
-
   root.file('assets.json', JSON.stringify(simpleAssets, null, 2));
-
 
   // 2) metadata.csv – spreadsheet with all metadata keys
   const keys    = backupsLastKeys;
@@ -941,51 +938,115 @@ async function exportBackupsZip() {
   const csvString = lines.join('\n');
   root.file('metadata.csv', csvString);
 
-  // 3) by_asset/*.json – one JSON per asset (already "perfect" for you)
+  // 3) by_asset/*.json – one CIP-25 style JSON per asset
   const perAsset = root.folder('by_asset');
   for (const row of backupsLastRows) {
+    const meta = row.metadata || {};
+
+    // Asset key inside the policy: prefer metadata.name, then ASCII asset name, then unit
+    const assetKey = (meta.name && typeof meta.name === 'string')
+      ? meta.name
+      : (row.assetName || row.unit);
+
+    const cip25 = {
+      "721": {
+        [row.policyId]: {
+          [assetKey]: meta
+        }
+      }
+    };
+
     const safeName =
       row.assetName && /^[a-z0-9_\-]+$/i.test(row.assetName)
         ? row.assetName
         : row.unit;
 
-    // keep your per-asset format exactly as-is
     perAsset.file(
       `${safeName}.json`,
-      JSON.stringify(row, null, 2)
+      JSON.stringify(cip25, null, 2)
     );
   }
 
-  // 4) CIP-25 "whole collection" metadata – one file for the entire policy
-  //    Structure:
-  //    {
-  //      "721": {
-  //        "<policyId>": {
-  //          "<assetName>": { ... onchain_metadata ... }
-  //        },
-  //        "version": "1.0"
-  //      }
-  //    }
-  const cip721 = { "721": {} };
-  cip721["721"][policy] = {};
+  // 4) images/ – download image files from IPFS / HTTP where possible
+  const imgFolder = root.folder('images');
+  const imageFetchPromises = [];
 
   for (const row of backupsLastRows) {
     const meta = row.metadata || {};
+    let imgField = meta.image;
 
-    // Prefer ASCII assetName; fall back to unit if name is missing
-    const assetKey =
-      row.assetName && row.assetName !== '(no ASCII name)'
+    if (!imgField) continue;
+
+    // Some collections use an array of images – grab the first string
+    if (Array.isArray(imgField)) {
+      imgField = imgField.find(v => typeof v === 'string') || null;
+    }
+    if (typeof imgField !== 'string') continue;
+
+    let finalUrl = null;
+
+    if (imgField.startsWith('ipfs://')) {
+      // ipfs://Qm... or ipfs://ipfs/Qm...
+      let path = imgField.replace(/^ipfs:\/\//, '');
+      if (path.startsWith('ipfs/')) {
+        path = path.slice(5);
+      }
+      // You can swap to your preferred gateway here
+      finalUrl = `https://ipfs.io/ipfs/${path}`;
+    } else if (imgField.startsWith('https://') || imgField.startsWith('http://')) {
+      finalUrl = imgField;
+    } else {
+      // Unknown scheme (e.g. bare CID) – skip for now
+      continue;
+    }
+
+    if (!finalUrl) continue;
+
+    const safeName =
+      row.assetName && /^[a-z0-9_\-]+$/i.test(row.assetName)
         ? row.assetName
         : row.unit;
 
-    // Only the body that shows to the holder – no "unit", no "quantity", etc.
-    cip721["721"][policy][assetKey] = meta;
+    imageFetchPromises.push(
+      (async () => {
+        try {
+          const res = await fetch(finalUrl);
+          if (!res.ok) {
+            console.warn('[BackUps] Image fetch failed for', finalUrl, res.status);
+            return;
+          }
+          const contentType = res.headers.get('content-type') || '';
+          let ext = 'bin';
+
+          if (contentType.includes('png')) ext = 'png';
+          else if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = 'jpg';
+          else if (contentType.includes('gif')) ext = 'gif';
+          else if (contentType.includes('webp')) ext = 'webp';
+          else {
+            // Try to guess from URL path
+            try {
+              const urlObj = new URL(finalUrl);
+              const path   = urlObj.pathname.toLowerCase();
+              if (path.endsWith('.png')) ext = 'png';
+              else if (path.endsWith('.jpg') || path.endsWith('.jpeg')) ext = 'jpg';
+              else if (path.endsWith('.gif')) ext = 'gif';
+              else if (path.endsWith('.webp')) ext = 'webp';
+            } catch (_) { /* ignore URL parse issues */ }
+          }
+
+          const ab = await res.arrayBuffer();
+          imgFolder.file(`${safeName}.${ext}`, ab);
+        } catch (err) {
+          console.warn('[BackUps] Image fetch error for', finalUrl, err);
+        }
+      })()
+    );
   }
 
-  cip721["721"].version = "1.0";
-
-  // e.g. policy_adc5...fb1f_721.json
-  root.file(`policy_${policy}_721.json`, JSON.stringify(cip721, null, 2));
+  // Wait for all image downloads to finish (or fail) before finalizing ZIP
+  if (imageFetchPromises.length) {
+    await Promise.all(imageFetchPromises);
+  }
 
   // 5) README.txt
   const readme = [
@@ -995,10 +1056,10 @@ async function exportBackupsZip() {
     `Policy ID: ${policy}`,
     '',
     'Contents:',
-    '- assets.json         : Technical/raw view of all assets under the policy (unit + metadata).',
-    '- metadata.csv        : Spreadsheet-friendly view of all on-chain metadata properties.',
-    '- by_asset/*.json     : One JSON file per asset (same structure you already liked).',
-    `- policy_${policy}_721.json : CIP-25 "721" metadata for the entire collection (ready to mint).`,
+    '- assets.json       : All assets under the policy, simplified to { assetName, metadata }.',
+    '- metadata.csv      : Spreadsheet-friendly view of all on-chain metadata properties.',
+    '- by_asset/*.json   : One CIP-25 721-style JSON file per asset.',
+    '- images/*          : Image files fetched from IPFS / HTTPS image URLs where available.',
     '',
     'Generated for backup / analysis. No private keys were used or exposed.',
   ].join('\n');
@@ -1008,6 +1069,7 @@ async function exportBackupsZip() {
   const filename = `BackUps_${policy}.zip`;
   saveAs(blob, filename);
 }
+
 
 // ---------------------------------------------------------
 // Initialize BackUps app after gate
