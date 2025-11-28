@@ -1295,10 +1295,6 @@ async function checkPolicyAssets() {
       }
     }
 
-    const unmet = ACCESS_POLICIES.filter(
-      p => (required[p.policyId] || 0) < p.minAssets
-    );
-
 const unmet = ACCESS_POLICIES.filter(
   p => (required[p.policyId] || 0) < p.minAssets
 );
