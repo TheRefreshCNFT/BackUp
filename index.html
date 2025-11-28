@@ -1271,9 +1271,6 @@ payBtn?.addEventListener('click', payForCurrentPolicy);
 
 }
 
-// ---------------------------------------------------------
-// Gate: check policy assets & paid pass
-// ---------------------------------------------------------
 async function checkPolicyAssets() {
   if (!meshWallet) return;
 
@@ -1295,59 +1292,51 @@ async function checkPolicyAssets() {
       }
     }
 
-const unmet = ACCESS_POLICIES.filter(
-  p => (required[p.policyId] || 0) < p.minAssets
-);
+    const unmet = ACCESS_POLICIES.filter(
+      p => (required[p.policyId] || 0) < p.minAssets
+    );
 
-if (unmet.length === 0) {
-  backupsIsHolder = true;
-  backupsRequiresPayment = false;
+    if (unmet.length === 0) {
+      // Holder: free access
+      backupsIsHolder = true;
+      backupsRequiresPayment = false;
 
-  const detail = buildRequirementsDetail(required);
+      const detail = buildRequirementsDetail(required);
 
-  walletStatus.textContent =
-    `✅ Access granted.\n${detail}`;
+      walletStatus.textContent =
+        `✅ Access granted.\n${detail}`;
 
-  accessMessage.classList.remove('error');
-  accessMessage.innerHTML = `<strong>Access granted. Loading BackUps…</strong>`;
+      accessMessage.classList.remove('error');
+      accessMessage.innerHTML = `<strong>Access granted. Loading BackUps…</strong>`;
 
-  payAccessBtn.style.display = 'none';
+      payAccessBtn.style.display = 'none';
 
-  protectedArea.classList.remove('hidden');
-  gateOverlay.classList.add('hidden');
-  initLocApp('holder');
-} else {
-  backupsIsHolder = false;
-  backupsRequiresPayment = true;
+      protectedArea.classList.remove('hidden');
+      gateOverlay.classList.add('hidden');
+      initLocApp('holder');
+    } else {
+      // Non-holder: per-policy pricing mode
+      backupsIsHolder = false;
+      backupsRequiresPayment = true;
 
-  const detail = buildRequirementsDetail(required);
-  walletStatus.textContent = detail;
-
-  accessMessage.classList.add('error');
-  accessMessage.innerHTML =
-    `You don’t yet meet the free BackUps holder requirements.<br>` +
-    `Pricing for non-holders is <strong>100₳ per 1000 assets</strong> (per policy BackUp).<br>` +
-    `Press “Enter BackUps” below to continue and scan a policy.`;
-
-  payAccessBtn.textContent = 'Enter BackUps';
-  payAccessBtn.style.display = 'inline-flex';
-
-  // clicking this just opens BackUps with per-policy pricing mode
-  payAccessBtn.onclick = () => {
-    protectedArea.classList.remove('hidden');
-    gateOverlay.classList.add('hidden');
-    initLocApp('nonholder');
-  };
-}
+      const detail = buildRequirementsDetail(required);
+      walletStatus.textContent = detail;
 
       accessMessage.classList.add('error');
       accessMessage.innerHTML =
         `You don’t yet meet the free BackUps holder requirements.<br>` +
-        `<a href="${getPrimaryPurchaseUrl()}" target="_blank" rel="noopener noreferrer">
-           Purchase Assets
-         </a> or pay ${ACCESS_PASS_FEE_ADA}₳ for 30 days access below.`;
+        `Pricing for non-holders is <strong>100₳ per 1000 assets</strong> (per policy BackUp).<br>` +
+        `Press “Enter BackUps” below to continue and scan a policy.`;
 
+      payAccessBtn.textContent = 'Enter BackUps';
       payAccessBtn.style.display = 'inline-flex';
+
+      // Clicking this just opens BackUps in non-holder mode
+      payAccessBtn.onclick = () => {
+        protectedArea.classList.remove('hidden');
+        gateOverlay.classList.add('hidden');
+        initLocApp('nonholder');
+      };
     }
 
   } catch (err) {
