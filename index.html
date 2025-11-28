@@ -1951,9 +1951,16 @@ async function connect() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', detect);
+// Make sure detect() always runs, even if DOMContentLoaded already fired
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', detect);
+} else {
+  detect();
+}
+
 btn.addEventListener('click', connect);
 payAccessBtn.addEventListener('click', payForLocAccess);
+
 
 </script>
 
