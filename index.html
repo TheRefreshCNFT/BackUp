@@ -908,7 +908,14 @@ async function exportBackupsZip() {
   const root   = zip.folder(`policy_${policy}`) || zip;
 
   // 1) assets.json – all raw rows (keep as-is for technical backup)
-  root.file('assets.json', JSON.stringify(backupsLastRows, null, 2));
+  // 1) assets.json – simplified array: [{ assetName, metadata }, ...]
+  const simpleAssets = backupsLastRows.map(row => ({
+    assetName: row.assetName,
+    metadata:  row.metadata || {}
+  }));
+
+  root.file('assets.json', JSON.stringify(simpleAssets, null, 2));
+
 
   // 2) metadata.csv – spreadsheet with all metadata keys
   const keys    = backupsLastKeys;
