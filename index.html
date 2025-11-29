@@ -355,7 +355,27 @@
       margin-top: 0.5rem;
       font-size: 0.8rem;
       opacity: 0.9;
+      word-break: break-all;
     }
+    
+    .loc-status-stack {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Make the bottom tracking log a bit more compact & readable */
+.loc-status-stack .loc-tx-status {
+  margin-top: 0;          /* handled by gap above */
+  font-size: 0.75rem;     /* slightly smaller so long lines feel tidy */
+  line-height: 1.4;
+  white-space: pre-line;  /* respects your \n in JS messages */
+}
+
+
 
     .prev-search-item {
   padding: 0.35rem 0.5rem;
@@ -386,6 +406,19 @@
   cursor: pointer;
   text-decoration: underline;
 }
+.prev-search-receipt-link {
+  font-size: 0.72rem;
+  color: #ffc857;
+  text-decoration: underline;
+  cursor: pointer;
+  display: inline-block;
+  margin-top: 0.1rem;
+}
+
+.prev-search-receipt-link:hover {
+  color: #ffe08a;
+}
+
 
 
     .table-wrapper {
@@ -415,9 +448,59 @@
       top: 0;
       z-index: 1;
     }
+    
+    /* Collapsible assets list wrapper */
+.loc-results-details {
+  margin-top: 0.5rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(5, 10, 24, 0.7);
+  padding: 0.5rem 0.5rem 0.6rem;
+}
+
+/* Slight extra bottom padding only when open */
+.loc-results-details[open] {
+  padding-bottom: 0.75rem;
+}
+
+/* Summary line styling (the clickable header) */
+.loc-results-summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #e4e8ff;
+}
+
+/* Hide default marker in some browsers */
+.loc-results-summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Custom caret icon */
+.loc-results-summary::before {
+  content: '▸';
+  font-size: 0.75rem;
+  opacity: 0.8;
+  transition: transform 0.15s ease;
+}
+
+/* Rotate caret when the section is open */
+.loc-results-details[open] .loc-results-summary::before {
+  transform: rotate(90deg);
+}
+
+/* Space between summary and table */
+.loc-results-details .table-wrapper {
+  margin-top: 0.4rem;
+}
+
 
     #backupsResultsSummary code {
-  font-size: 0.6em; /* roughly half the surrounding text size */
+  font-size: 0.65em; /* roughly half the surrounding text size */
 }
 
 
@@ -473,18 +556,18 @@
             Scan policy on chain
           </button>
 
-          <p class="loc-hint">
-            BackUps queries Blockfrost for all assets under this policy and grabs every
-            on-chain metadata property it finds. No wallet contents are scanned for this step.
-          </p>
+<p class="loc-hint">
+  BackUps queries Blockfrost for all assets under this policy and grabs every
+  on-chain metadata property it finds. No wallet contents are scanned for this step.
+</p>
 
-          <p id="backupsScanStatus" class="loc-tx-status"></p>
-          <div id="backupsPreviousSearches" class="loc-field">
+<div id="backupsPreviousSearches" class="loc-field">
   <span>Previous Searches</span>
   <div id="backupsPrevList" class="loc-hint">
     No previous searches yet.
   </div>
 </div>
+
 
         </div>
       </div>
@@ -497,22 +580,27 @@
             <span>No scan yet. Paste a policy ID and press “Scan policy on chain”.</span>
           </div>
 
-<div class="table-wrapper">
-  <table id="backupsResultsTable" class="loc-results-table hidden">
-    <thead>
-      <tr>
-        <th>Asset Name (ASCII)</th>
-        <th>Quantity</th>
-        <th>Full Unit</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
+<!-- Assets list section (collapsible) -->
+<details id="backupsResultsDetails" class="loc-results-details">
+  <summary class="loc-results-summary">
+    Assets under this policy (click to collapse/expand)
+  </summary>
 
-<p id="backupsFeeStatus" class="loc-tx-status"></p>
-<p id="backupsQuoteWarning" class="loc-tx-status"></p>
-          
+  <div class="table-wrapper">
+    <table id="backupsResultsTable" class="loc-results-table hidden">
+      <thead>
+        <tr>
+          <th>Asset Name (ASCII)</th>
+          <th>Quantity</th>
+          <th>Full Unit</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</details>
+
+
 <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem;">
   <button type="button"
           id="backupsPayBtn"
@@ -529,6 +617,23 @@
     Download BackUps .zip
   </button>
 </div>
+
+<!-- 🔹 New: logically stacked tracking area at the bottom -->
+<div id="backupsStatusStack" class="loc-status-stack">
+  <!-- 1) Initial / metadata scan progress -->
+  <p id="backupsScanStatus" class="loc-tx-status"></p>
+
+  <!-- 2) Fee + payment / holder info -->
+  <p id="backupsFeeStatus" class="loc-tx-status"></p>
+
+  <!-- 3) Quote / “one scan” warning -->
+  <p id="backupsQuoteWarning" class="loc-tx-status"></p>
+
+  <!-- 4) ZIP / image download / finalization progress -->
+  <p id="backupsDownloadStatus" class="loc-tx-status"></p>
+</div>
+
+
 
         </div>
       </div>
@@ -825,19 +930,34 @@ async function loadPreviousSearches() {
   }
 }
 
-async function savePreviousSearch(policyId, assetCount, feeAda) {
+async function savePreviousSearch(policyId, assetCount, feeAda, extras = {}) {
   if (!userIdentity || !policyId) return;
 
   const existingIndex = backupsPreviousSearches.findIndex(
     (s) => s.policyId === policyId
   );
   const now = Date.now();
-
-  const record = { policyId, assetCount, feeAda, quotedAt: now };
+  let record;
 
   if (existingIndex >= 0) {
+    const existing = backupsPreviousSearches[existingIndex] || {};
+    record = {
+      ...existing,
+      policyId,
+      assetCount,
+      feeAda,
+      quotedAt: now,
+      ...extras, // may include paidFeeAda, paidAt, paidTxHash, paidAddress
+    };
     backupsPreviousSearches[existingIndex] = record;
   } else {
+    record = {
+      policyId,
+      assetCount,
+      feeAda,
+      quotedAt: now,
+      ...extras,
+    };
     backupsPreviousSearches.push(record);
   }
 
@@ -862,6 +982,7 @@ async function savePreviousSearch(policyId, assetCount, feeAda) {
   }
 }
 
+
 function renderPreviousSearches() {
   const wrapper = document.getElementById('backupsPrevList');
   if (!wrapper) return;
@@ -877,22 +998,46 @@ function renderPreviousSearches() {
   const visibles = backupsPreviousSearches.slice(0, maxAlwaysVisible);
   const older   = backupsPreviousSearches.slice(maxAlwaysVisible);
 
-  const makeItem = (s) => {
-    const div = document.createElement('div');
-    div.className = 'prev-search-item';
-    div.innerHTML = `
-      <div class="prev-search-policy">${s.policyId}</div>
-      <div class="prev-search-meta">
-        ${s.assetCount} asset(s) • quoted fee ${s.feeAda}₳
-      </div>
-    `;
-    div.addEventListener('click', () => {
-      const input = document.getElementById('backupsPolicyInput');
-      if (input) input.value = s.policyId;
-      runQuotedScanFlow(s);
+const makeItem = (s) => {
+  const div = document.createElement('div');
+  div.className = 'prev-search-item';
+
+  const paidFeeLabel =
+    s.paidFeeAda != null && s.paidFeeAda > 0 ? `${s.paidFeeAda}₳` : '–';
+
+  div.innerHTML = `
+    <div class="prev-search-policy">${s.policyId}</div>
+    <div class="prev-search-meta">
+      ${s.assetCount} asset(s) • quoted fee ${s.feeAda}₳ • paid fee ${paidFeeLabel}
+    </div>
+    <div class="prev-search-meta">
+      ${
+        s.paidFeeAda != null && s.paidFeeAda > 0 && s.paidTxHash
+          ? '<span class="prev-search-receipt-link">Download Receipt</span>'
+          : ''
+      }
+    </div>
+  `;
+
+  // Clicking the whole row = reuse quote
+  div.addEventListener('click', () => {
+    const input = document.getElementById('backupsPolicyInput');
+    if (input) input.value = s.policyId;
+    runQuotedScanFlow(s);
+  });
+
+  // Clicking "Download Receipt" only downloads, doesn’t trigger scan
+  const receiptLink = div.querySelector('.prev-search-receipt-link');
+  if (receiptLink) {
+    receiptLink.addEventListener('click', (evt) => {
+      evt.stopPropagation();
+      downloadReceiptForSearch(s);
     });
-    return div;
-  };
+  }
+
+  return div;
+};
+
 
   visibles.forEach((s) => wrapper.appendChild(makeItem(s)));
 
@@ -927,6 +1072,7 @@ function runQuotedScanFlow(search) {
   const payBtn    = document.getElementById('backupsPayBtn');
   const zipBtn    = document.getElementById('backupsDownloadZipBtn');
   const quoteWarn = document.getElementById('backupsQuoteWarning');
+  const scanBtn   = document.getElementById('backupsScanBtn');
 
   backupsHasScan              = false;
   backupsLastPolicyId         = search.policyId;
@@ -978,6 +1124,10 @@ function runQuotedScanFlow(search) {
     } else {
       payBtn.style.display = 'none';
     }
+  }
+    // 🔹 enforce “one scan” when using a stored quote
+  if (scanBtn) {
+    scanBtn.disabled = true;
   }
 }
 
@@ -1031,6 +1181,11 @@ async function fetchMetadataForAsset(unit) {
 
 async function scanMetadataForCurrentPolicy(statusEl) {
   if (!backupsLastPolicyId) return;
+  
+    const downloadStatusEl = document.getElementById('backupsDownloadStatus');
+  const headerLineForScan =
+    'Processing BackUps request… Fetching asset metadata and preparing ZIP…';
+
 
   const policyId = backupsLastPolicyId;
 
@@ -1054,20 +1209,45 @@ async function scanMetadataForCurrentPolicy(statusEl) {
     const assetName = hexToAscii(nameHex) || '(no ASCII name)';
 
     if (statusEl) {
-      statusEl.textContent = `Scanning ${i + 1} / ${total}…`;
+      if (statusEl === downloadStatusEl) {
+        statusEl.innerHTML =
+          `<strong>${headerLineForScan}</strong><br>` +
+          `<span style="opacity:0.85;">Scanning ${i + 1} / ${total}…</span>`;
+      } else {
+        statusEl.textContent = `Scanning ${i + 1} / ${total}…`;
+      }
     }
 
-    const metadata = await fetchMetadataForAsset(unit);
 
-    Object.keys(metadata).forEach(k => allKeys.add(k));
+  const metadata = await fetchMetadataForAsset(unit);
 
-    rows.push({
-      unit,
-      policyId: policyHex,
-      assetName,
-      quantity,
-      metadata,
-    });
+  // 🔴 If there is no metadata at all – skip it
+  if (!metadata || Object.keys(metadata).length === 0) {
+    continue;
+  }
+
+  // 🔴 Require a proper name in metadata
+  const metaNameRaw = (typeof metadata.name === 'string') ? metadata.name.trim() : '';
+
+  // if there's no name we don't want it
+  if (!metaNameRaw) {
+    continue;
+  }
+
+  // store this as the assetName we use everywhere
+  const assetNameClean = metaNameRaw;
+
+  Object.keys(metadata).forEach(k => allKeys.add(k));
+
+  rows.push({
+    unit,
+    policyId: policyHex,
+    nameHex,
+    assetName: assetNameClean,   // this is now ALWAYS metadata.name
+    quantity,
+    metadata,
+  });
+
   }
 
   backupsHasScan  = true;
@@ -1176,21 +1356,22 @@ feeStatus.textContent =
 
 
 async function backupsScanForPolicy() {
-  const statusEl  = document.getElementById('backupsScanStatus');
-  const policyEl  = document.getElementById('backupsPolicyInput');
-  const zipBtn    = document.getElementById('backupsDownloadZipBtn');
-  const table     = document.getElementById('backupsResultsTable');
-  const tbody     = table?.querySelector('tbody');
-  const summary   = document.getElementById('backupsResultsSummary');
-  const feeStatus = document.getElementById('backupsFeeStatus');
-  const payBtn    = document.getElementById('backupsPayBtn');
-  const quoteWarn = document.getElementById('backupsQuoteWarning');
-
+  const statusEl        = document.getElementById('backupsScanStatus');
+  const policyEl        = document.getElementById('backupsPolicyInput');
+  const zipBtn          = document.getElementById('backupsDownloadZipBtn');
+  const table           = document.getElementById('backupsResultsTable');
+  const tbody           = table?.querySelector('tbody');
+  const summary         = document.getElementById('backupsResultsSummary');
+  const feeStatus       = document.getElementById('backupsFeeStatus');
+  const payBtn          = document.getElementById('backupsPayBtn');
+  const quoteWarn       = document.getElementById('backupsQuoteWarning');
+  const downloadStatus  = document.getElementById('backupsDownloadStatus');
 
   // reset state for new scan
   if (feeStatus) feeStatus.textContent = '';
   if (quoteWarn) quoteWarn.textContent = '';
   if (statusEl) statusEl.textContent = '';
+  if (downloadStatus) downloadStatus.textContent = '';
   backupsHasScan              = false;
   backupsLastPolicyId         = '';
   backupsLastRows             = [];
@@ -1215,6 +1396,18 @@ async function backupsScanForPolicy() {
   }
 
   const rawPolicy = (policyEl?.value || '').trim();
+
+  // 🔹 If this policy was already scanned before, reuse the stored quote
+  const existingSearch = backupsPreviousSearches.find(
+    (s) => s.policyId === rawPolicy
+  );
+  if (existingSearch) {
+    runQuotedScanFlow(existingSearch);
+    const scanBtn = document.getElementById('backupsScanBtn');
+    if (scanBtn) scanBtn.disabled = true;
+    return; // ⛔ no new Blockfrost scan for the quote itself
+  }
+
   if (!rawPolicy) {
     if (statusEl) statusEl.textContent = 'Enter a policy ID to scan.';
     return;
@@ -1231,72 +1424,57 @@ async function backupsScanForPolicy() {
   }
 
   try {
-    if (statusEl) statusEl.textContent = 'Fetching assets for policy via Blockfrost…';
+    if (statusEl) {
+      statusEl.textContent = 'Fetching assets for policy via Blockfrost…';
+    }
 
     const baseAssets = await fetchAllAssetsForPolicy(rawPolicy);
-    backupsBaseAssets         = baseAssets;
-    backupsLastPolicyId       = rawPolicy;
-    backupsCurrentAssetCount  = baseAssets.length;
-    backupsCurrentFeeAda      = computeBackupsFeeAda(backupsCurrentAssetCount);
-    backupsCurrentFeeLovelace = String(backupsCurrentFeeAda * 1_000_000);
-        // Remember this quote server-side to avoid repeated full scans for this policy
-    savePreviousSearch(rawPolicy, backupsCurrentAssetCount, backupsCurrentFeeAda);
-
+    backupsBaseAssets   = baseAssets;
+    backupsLastPolicyId = rawPolicy;
 
     if (!baseAssets.length) {
       if (summary) {
         summary.innerHTML =
           `<span>No assets under policy <code>${rawPolicy}</code> were found on chain.</span>`;
       }
-      if (statusEl) statusEl.textContent = 'Scan complete. No assets under this policy.';
+      if (statusEl) {
+        statusEl.textContent = 'Scan complete. No assets under this policy.';
+      }
       return;
     }
 
-    if (backupsIsHolder) {
-      // Holders: do full metadata scan immediately and unlock ZIP
-      await scanMetadataForCurrentPolicy(statusEl);
-      if (statusEl) statusEl.textContent = 'Scan complete.';
-    } else {
-      // Non-holders: show count + fee, but DO NOT fetch per-asset metadata yet
-      if (summary) {
-        summary.innerHTML =
-          `<span>Policy <code>${rawPolicy}</code> has <strong>${backupsCurrentAssetCount}</strong> asset(s).</span>`;
-      }
-
-      if (backupsCurrentFeeAda <= 0) {
-        if (feeStatus) {
-          feeStatus.textContent =
-            'No assets under this policy, so there is nothing to pay or download.';
-        }
-        if (zipBtn) zipBtn.disabled = true;
-      } else {
-        if (feeStatus) {
-feeStatus.textContent =
-  `This policy has ${backupsCurrentAssetCount} asset(s).\n` +
-  `BackUps fee is ${backupsCurrentFeeAda}₳ (10₳ per 50 assets, minimum 10₳).\n` +
-  `Press “Pay & unlock ZIP” to process the transaction.`;
-
-        }
-        if (payBtn) {
-          payBtn.textContent = `Pay ${backupsCurrentFeeAda}₳ & unlock ZIP`;
-          payBtn.style.display = 'inline-flex';
-          payBtn.disabled = false;
-        }
-        if (zipBtn) zipBtn.disabled = true;
-
-        if (quoteWarn) {
-          quoteWarn.textContent =
- 'You can scan one policy one time. This quote is based on the asset count shown above.\n' +
-      'If you do not pay and download today and more assets are minted later, you will need to pay the quoted amount to begin the BackUps process, and will be asked to pay the difference before the ZIP can be downloaded.';
-        }
-
-      }
-
-      if (statusEl) {
-        statusEl.textContent =
-          'Asset list fetched. Complete payment to fetch metadata and enable ZIP download.';
-      }
+    // ⭐ NEW: always run the metadata scan so we ONLY work with "full" assets
+    if (statusEl) {
+      statusEl.textContent = 'Scanning assets and fetching on-chain metadata…';
     }
+
+    const downloadStatus = document.getElementById('backupsDownloadStatus');
+    if (downloadStatus) {
+      const headerLine =
+        'Processing BackUps request… Fetching asset metadata and preparing ZIP…';
+      downloadStatus.innerHTML =
+        `<strong>${headerLine}</strong><br>` +
+        `<span style="opacity:0.85;">Preparing metadata files…</span>`;
+    }
+
+    await scanMetadataForCurrentPolicy(downloadStatus || statusEl);
+
+
+    if (statusEl) {
+      statusEl.textContent = 'Scan complete.';
+    }
+
+    // At this point:
+    //   - backupsLastRows = ONLY assets with on-chain metadata + metadata.name
+    //   - renderBackupsResults() has already run
+    //   - backupsCurrentAssetCount / backupsCurrentFeeAda are based on that filtered list
+    //
+    // 🔹 Store this filtered count + fee as the "quote" for future reuse.
+    await savePreviousSearch(
+      rawPolicy,
+      backupsCurrentAssetCount,
+      backupsCurrentFeeAda
+    );
 
   } catch (err) {
     console.error('[BackUps] scan error:', err);
@@ -1308,6 +1486,7 @@ feeStatus.textContent =
 }
 
 
+
 function csvEscape(value) {
   const str = value == null ? '' : String(value);
   if (/[",\n\r]/.test(str)) {
@@ -1315,6 +1494,178 @@ function csvEscape(value) {
   }
   return str;
 }
+// Normalize metadata values so hex-like strings become human-readable text
+function normalizeMetadataValue(value) {
+  // String: if it looks like pure hex, try to decode using hexToAscii
+  if (typeof value === 'string') {
+    // only hex characters, even length
+    if (/^[0-9a-fA-F]+$/.test(value) && value.length % 2 === 0) {
+      const decoded = hexToAscii(value);
+      // accept if all chars are printable ASCII (space–~)
+      if (decoded && /^[\x20-\x7E]+$/.test(decoded)) {
+        return decoded;
+      }
+    }
+    return value;
+  }
+
+  // Array: normalize each element
+  if (Array.isArray(value)) {
+    return value.map(normalizeMetadataValue);
+  }
+
+  // Object: normalize each property
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const k in value) {
+      if (Object.prototype.hasOwnProperty.call(value, k)) {
+        out[k] = normalizeMetadataValue(value[k]);
+      }
+    }
+    return out;
+  }
+
+  // Everything else unchanged
+  return value;
+}
+
+
+function downloadReceiptForSearch(s) {
+  if (!s || !s.paidTxHash) {
+    alert('No recorded payment for this policy yet.');
+    return;
+  }
+
+  const canvas = document.createElement('canvas');
+  const width = 900;
+  const height = 500;
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#050814';
+  ctx.fillRect(0, 0, width, height);
+
+  // Card
+  ctx.fillStyle = '#0b1024';
+  roundRect(ctx, 40, 40, width - 80, height - 80, 18);
+  ctx.fill();
+
+  ctx.strokeStyle = '#788dff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header
+  ctx.fillStyle = '#e4e8ff';
+  ctx.font = 'bold 28px "Segoe UI", sans-serif';
+  ctx.fillText('BackUps Receipt', 70, 90);
+
+  // Date/time
+  const paidDate = s.paidAt ? new Date(s.paidAt) : new Date();
+  ctx.font = '16px "Segoe UI", sans-serif';
+  ctx.fillStyle = '#9aa3d9';
+  ctx.fillText(paidDate.toLocaleString(), 70, 120);
+
+  const lineYStart = 160;
+  const baseLineH = 30;
+  const labelX = 70;
+  const valueX = 260;
+  const maxValueWidth = width - valueX - 50;
+
+  const rows = [
+    ['Policy ID', s.policyId || '–'],
+    ['Total assets (quoted)', s.assetCount != null ? String(s.assetCount) : '–'],
+    ['Quoted fee', s.feeAda != null ? `${s.feeAda}₳` : '–'],
+    ['Paid fee', s.paidFeeAda != null ? `${s.paidFeeAda}₳` : '–'],
+    ['Buyer address', s.paidAddress || userAddress || '–'],
+    ['Tx hash', s.paidTxHash || '–'],
+  ];
+
+  ctx.font = '16px "Segoe UI", sans-serif';
+
+  let y = lineYStart;
+  for (const [label, valueRaw] of rows) {
+    const value = valueRaw || '–';
+
+    ctx.fillStyle = '#9aa3d9';
+    ctx.fillText(label + ':', labelX, y);
+
+    ctx.fillStyle = '#e4e8ff';
+
+    const lines = wrapText(ctx, value, maxValueWidth);
+    lines.forEach((line, idx) => {
+      ctx.fillText(line, valueX, y + idx * 18);
+    });
+
+    // advance by base line height + extra if wrapped
+    y += baseLineH + Math.max(0, (lines.length - 1) * 18);
+  }
+
+  // Footer
+  ctx.fillStyle = '#7cffb3';
+  ctx.font = '14px "Segoe UI", sans-serif';
+  ctx.fillText('BackUps by The Refresh', 70, height - 60);
+
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safePolicy = (s.policyId || 'policy').slice(0, 16);
+    a.href = url;
+    a.download = `BackUps_receipt_${safePolicy}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+// Simple rounded rect helper
+function roundRect(ctx, x, y, w, h, r) {
+  const radius = typeof r === 'number'
+    ? { tl: r, tr: r, br: r, bl: r }
+    : { tl: 0, tr: 0, br: 0, bl: 0, ...r };
+
+  ctx.beginPath();
+  ctx.moveTo(x + radius.tl, y);
+  ctx.lineTo(x + w - radius.tr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius.tr);
+  ctx.lineTo(x + w, y + h - radius.br);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius.br, y + h);
+  ctx.lineTo(x + radius.bl, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius.bl);
+  ctx.lineTo(x, y + radius.tl);
+  ctx.quadraticCurveTo(x, y, x + radius.tl, y);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, maxWidth) {
+  const str = String(text || '');
+  const lines = [];
+  let line = '';
+
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    const testLine = line + ch;
+    const width = ctx.measureText(testLine).width;
+
+    if (width > maxWidth && line) {
+      lines.push(line);
+      line = ch;
+    } else {
+      line = testLine;
+    }
+  }
+
+  if (line) {
+    lines.push(line);
+  }
+
+  return lines;
+}
+
+
 
 async function exportBackupsZip() {
   if (!backupsHasScan || !backupsLastRows.length || !window.JSZip || !window.saveAs) {
@@ -1325,188 +1676,407 @@ async function exportBackupsZip() {
     return;
   }
 
+  const downloadStatus = document.getElementById('backupsDownloadStatus');
+  const zipBtn         = document.getElementById('backupsDownloadZipBtn');
 
-  const zip    = new JSZip();
-  const policy = backupsLastPolicyId || 'unknown_policy';
-  const root   = zip.folder(`policy_${policy}`) || zip;
+  const headerLine = 'Processing BackUps request… Fetching asset metadata and preparing ZIP…';
 
-  // 1) assets.json – CIP-25 style for all assets (no "unit" field)
-  const allCip25 = { "721": {} };
+  if (zipBtn) {
+    zipBtn.disabled = true;
+  }
+  if (downloadStatus) {
+    // Make the processing text stand out more, with room under it for the counters
+    downloadStatus.innerHTML =
+      `<strong>${headerLine}</strong><br>` +
+      `<span style="opacity:0.85;">Preparing metadata files…</span>`;
+  }
 
-  for (const row of backupsLastRows) {
-    const meta     = row.metadata || {};
-    const policyId = row.policyId;
+  try {
+    const zip    = new JSZip();
+    const policy = backupsLastPolicyId || 'unknown_policy';
+    const root   = zip.folder(`policy_${policy}`) || zip;
 
-    // Asset key inside the policy: same logic as per-asset files
-    const assetKey = (meta.name && typeof meta.name === 'string')
-      ? meta.name
-      : (row.assetName || row.unit);
+    // 🔹 Pre-normalize metadata per row so hex-like strings become human-readable
+    const normalizedRows = backupsLastRows.map((row) => {
+      const rawMeta  = row.metadata || {};
+      const normMeta = normalizeMetadataValue(rawMeta);
+      return { row, meta: normMeta };
+    });
 
-    if (!allCip25["721"][policyId]) {
-      allCip25["721"][policyId] = {};
+    // 1) assets.json – CIP-25 style for all assets (no "unit" field)
+    const allCip25 = { "721": {} };
+
+    for (const { row, meta } of normalizedRows) {
+      const policyId = row.policyId;
+
+      // assetName is guaranteed to be metadata.name from the scan
+      const assetKey = row.assetName;
+      if (!assetKey) continue; // safety guard
+
+      if (!allCip25["721"][policyId]) {
+        allCip25["721"][policyId] = {};
+      }
+
+      allCip25["721"][policyId][assetKey] = meta;
     }
 
-    allCip25["721"][policyId][assetKey] = meta;
-  }
+    root.file('assets.json', JSON.stringify(allCip25, null, 2));
 
-  root.file('assets.json', JSON.stringify(allCip25, null, 2));
+    // 2) metadata.csv – spreadsheet with all metadata keys
+    const keys    = backupsLastKeys;
+    const headers = ['unit', 'assetName', 'quantity', ...keys];
+    const lines   = [headers.map(csvEscape).join(',')];
 
+    for (const { row, meta } of normalizedRows) {
+      const vals = [
+        row.unit,
+        row.assetName,
+        row.quantity,
+        ...keys.map(k => {
+          const v = meta[k];
+          if (v === null || v === undefined) return '';
+          if (typeof v === 'object') return JSON.stringify(v);
+          return String(v);
+        }),
+      ];
+      lines.push(vals.map(csvEscape).join(','));
+    }
 
-  // 2) metadata.csv – spreadsheet with all metadata keys
-  const keys    = backupsLastKeys;
-  const headers = ['unit', 'assetName', 'quantity', ...keys];
-  const lines   = [headers.map(csvEscape).join(',')];
+    const csvString = lines.join('\n');
+    root.file('metadata.csv', csvString);
 
-  for (const row of backupsLastRows) {
-    const meta = row.metadata || {};
-    const vals = [
-      row.unit,
-      row.assetName,
-      row.quantity,
-      ...keys.map(k => {
-        const v = meta[k];
-        if (v === null || v === undefined) return '';
-        if (typeof v === 'object') return JSON.stringify(v);
-        return String(v);
-      }),
-    ];
-    lines.push(vals.map(csvEscape).join(','));
-  }
+    // 3) by_asset/*.json – one CIP-25 style JSON per asset
+    const perAsset = root.folder('by_asset');
 
-  const csvString = lines.join('\n');
-  root.file('metadata.csv', csvString);
+    for (const { row, meta } of normalizedRows) {
+      const assetKey = row.assetName;
+      if (!assetKey) continue; // extra safety
 
-  // 3) by_asset/*.json – one CIP-25 style JSON per asset
-  const perAsset = root.folder('by_asset');
-  for (const row of backupsLastRows) {
-    const meta = row.metadata || {};
+      const cip25 = {
+        "721": {
+          [row.policyId]: {
+            [assetKey]: meta
+          }
+        }
+      };
 
-    // Asset key inside the policy: prefer metadata.name, then ASCII asset name, then unit
-    const assetKey = (meta.name && typeof meta.name === 'string')
-      ? meta.name
-      : (row.assetName || row.unit);
+      // file name based on the asset name, cleaned up
+      let safeName = assetKey.trim();
+      if (!safeName) continue;
 
-    const cip25 = {
-      "721": {
-        [row.policyId]: {
-          [assetKey]: meta
+      // Replace anything not A–Z, 0–9, _ or - with "_"
+      safeName = safeName.replace(/[^a-z0-9_\-]/gi, '_');
+
+      perAsset.file(
+        `${safeName}.json`,
+        JSON.stringify(cip25, null, 2)
+      );
+    }
+
+    // 4) images/ – download image files from IPFS / HTTP where possible
+    const imgFolder = root.folder('images');
+
+    // First, collect all image tasks (so we know how many there are)
+    const imageTasks = [];
+
+    for (const { row, meta } of normalizedRows) {
+      let imgField = meta.image;
+      if (!imgField) continue;
+
+      // Some collections use an array of images – grab the first string
+      if (Array.isArray(imgField)) {
+        imgField = imgField.find(v => typeof v === 'string') || null;
+      }
+      if (typeof imgField !== 'string') continue;
+
+      let finalUrl = null;
+
+      if (imgField.startsWith('ipfs://')) {
+        // ipfs://Qm... or ipfs://ipfs/Qm...
+        let path = imgField.replace(/^ipfs:\/\//, '');
+        if (path.startsWith('ipfs/')) {
+          path = path.slice(5);
+        }
+        // You can swap to your preferred gateway here
+        finalUrl = `https://ipfs.io/ipfs/${path}`;
+      } else if (imgField.startsWith('https://') || imgField.startsWith('http://')) {
+        finalUrl = imgField;
+      } else {
+        // Unknown scheme (e.g. bare CID) – skip for now
+        continue;
+      }
+
+      if (!finalUrl) continue;
+
+      const safeName =
+        row.assetName && /^[a-z0-9_\-]+$/i.test(row.assetName)
+          ? row.assetName
+          : row.unit;
+
+      imageTasks.push({ finalUrl, safeName, expectedBytes: null });
+    }
+
+    const totalImages = imageTasks.length;
+    let completedImages = 0;
+    let successfulImages = 0;
+    let totalBytesExpected = 0;
+    let totalBytesReceived = 0;
+
+    function updateDownloadProgress() {
+      if (!downloadStatus) return;
+
+      const mb = (bytes) => (bytes / (1024 * 1024)).toFixed(2);
+
+      let bytesLine = '';
+      if (totalImages > 0) {
+        if (totalBytesExpected > 0) {
+          bytesLine =
+            `Downloading images ${completedImages} / ${totalImages} ` +
+            `– ${mb(totalBytesReceived)} / ${mb(totalBytesExpected)} MB`;
+        } else {
+          bytesLine =
+            `Downloading images ${completedImages} / ${totalImages} ` +
+            `– ${mb(totalBytesReceived)} MB so far`;
         }
       }
-    };
 
-    const safeName =
-      row.assetName && /^[a-z0-9_\-]+$/i.test(row.assetName)
-        ? row.assetName
-        : row.unit;
+      const extraHint =
+        `<span style="opacity:0.8;">` +
+        `This can take a while for large collections. ` +
+        `Please keep this tab open until it says the ZIP is ready.` +
+        `</span>`;
 
-    perAsset.file(
-      `${safeName}.json`,
-      JSON.stringify(cip25, null, 2)
-    );
-  }
-
-  // 4) images/ – download image files from IPFS / HTTP where possible
-  const imgFolder = root.folder('images');
-  const imageFetchPromises = [];
-
-  for (const row of backupsLastRows) {
-    const meta = row.metadata || {};
-    let imgField = meta.image;
-
-    if (!imgField) continue;
-
-    // Some collections use an array of images – grab the first string
-    if (Array.isArray(imgField)) {
-      imgField = imgField.find(v => typeof v === 'string') || null;
-    }
-    if (typeof imgField !== 'string') continue;
-
-    let finalUrl = null;
-
-    if (imgField.startsWith('ipfs://')) {
-      // ipfs://Qm... or ipfs://ipfs/Qm...
-      let path = imgField.replace(/^ipfs:\/\//, '');
-      if (path.startsWith('ipfs/')) {
-        path = path.slice(5);
+      if (bytesLine) {
+        downloadStatus.innerHTML =
+          `<strong>${headerLine}</strong><br>` +
+          `${bytesLine}<br>` +
+          extraHint;
+      } else {
+        // No images – just show the header & hint
+        downloadStatus.innerHTML =
+          `<strong>${headerLine}</strong><br>` +
+          `<span style="opacity:0.85;">Preparing metadata files…</span><br>` +
+          extraHint;
       }
-      // You can swap to your preferred gateway here
-      finalUrl = `https://ipfs.io/ipfs/${path}`;
-    } else if (imgField.startsWith('https://') || imgField.startsWith('http://')) {
-      finalUrl = imgField;
-    } else {
-      // Unknown scheme (e.g. bare CID) – skip for now
-      continue;
     }
 
-    if (!finalUrl) continue;
+    // Initial state
+    if (totalImages > 0) {
+      updateDownloadProgress();
+    } else if (downloadStatus) {
+      downloadStatus.innerHTML =
+        `<strong>${headerLine}</strong><br>` +
+        `<span style="opacity:0.85;">No image URLs found; preparing metadata-only ZIP…</span>`;
+    }
 
-    const safeName =
-      row.assetName && /^[a-z0-9_\-]+$/i.test(row.assetName)
-        ? row.assetName
-        : row.unit;
+    function isRetryableStatus(status) {
+      // 504 is the main one you’re seeing; also treat common transient codes as retryable
+      return (
+        status === 408 || // Request Timeout
+        status === 429 || // Too Many Requests / rate limiting
+        status === 500 ||
+        status === 502 ||
+        status === 503 ||
+        status === 504
+      );
+    }
 
-    imageFetchPromises.push(
-      (async () => {
-        try {
-          const res = await fetch(finalUrl);
-          if (!res.ok) {
-            console.warn('[BackUps] Image fetch failed for', finalUrl, res.status);
-            return;
+    async function fetchImageOnce(task, attempt, maxAttempts) {
+      const { finalUrl, safeName } = task;
+
+      try {
+        const res = await fetch(finalUrl);
+        if (!res.ok) {
+          console.warn(
+            `[BackUps] Image fetch failed (attempt ${attempt}/${maxAttempts}) for`,
+            finalUrl,
+            res.status
+          );
+
+          // For non-retryable status, stop immediately; for retryable ones, let caller retry
+          if (isRetryableStatus(res.status)) {
+            return 'retry';
           }
-          const contentType = res.headers.get('content-type') || '';
-          let ext = 'bin';
-
-          if (contentType.includes('png')) ext = 'png';
-          else if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = 'jpg';
-          else if (contentType.includes('gif')) ext = 'gif';
-          else if (contentType.includes('webp')) ext = 'webp';
-          else {
-            // Try to guess from URL path
-            try {
-              const urlObj = new URL(finalUrl);
-              const path   = urlObj.pathname.toLowerCase();
-              if (path.endsWith('.png')) ext = 'png';
-              else if (path.endsWith('.jpg') || path.endsWith('.jpeg')) ext = 'jpg';
-              else if (path.endsWith('.gif')) ext = 'gif';
-              else if (path.endsWith('.webp')) ext = 'webp';
-            } catch (_) { /* ignore URL parse issues */ }
-          }
-
-          const ab = await res.arrayBuffer();
-          imgFolder.file(`${safeName}.${ext}`, ab);
-        } catch (err) {
-          console.warn('[BackUps] Image fetch error for', finalUrl, err);
+          return 'non-retryable';
         }
-      })()
-    );
+
+        const contentType = res.headers.get('content-type') || '';
+        let ext = 'bin';
+
+        if (contentType.includes('png')) ext = 'png';
+        else if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = 'jpg';
+        else if (contentType.includes('gif')) ext = 'gif';
+        else if (contentType.includes('webp')) ext = 'webp';
+        else {
+          // Try to guess from URL path
+          try {
+            const urlObj = new URL(finalUrl);
+            const path   = urlObj.pathname.toLowerCase();
+            if (path.endsWith('.png')) ext = 'png';
+            else if (path.endsWith('.jpg') || path.endsWith('.jpeg')) ext = 'jpg';
+            else if (path.endsWith('.gif')) ext = 'gif';
+            else if (path.endsWith('.webp')) ext = 'webp';
+          } catch (_) { /* ignore URL parse issues */ }
+        }
+
+        // Track bytes using streaming reader if available
+        const contentLengthHeader = res.headers.get('content-length');
+        if (contentLengthHeader && task.expectedBytes == null) {
+          const parsed = parseInt(contentLengthHeader, 10);
+          if (!Number.isNaN(parsed) && parsed > 0) {
+            task.expectedBytes = parsed;
+            totalBytesExpected += parsed;
+          }
+        }
+
+        let arrayBuffer;
+        if (res.body && res.body.getReader) {
+          const reader = res.body.getReader();
+          const chunks = [];
+          let receivedForThis = 0;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            receivedForThis += value.byteLength;
+            totalBytesReceived += value.byteLength;
+            updateDownloadProgress();
+          }
+
+          const totalLength = chunks.reduce((sum, c) => sum + c.byteLength, 0);
+          const merged = new Uint8Array(totalLength);
+          let offset = 0;
+          for (const c of chunks) {
+            merged.set(c, offset);
+            offset += c.byteLength;
+          }
+          arrayBuffer = merged.buffer;
+        } else {
+          // Fallback for browsers without streaming support
+          arrayBuffer = await res.arrayBuffer();
+          totalBytesReceived += arrayBuffer.byteLength;
+          updateDownloadProgress();
+        }
+
+        imgFolder.file(`${safeName}.${ext}`, arrayBuffer);
+        return 'success';
+      } catch (err) {
+        console.warn(
+          `[BackUps] Image fetch error (attempt ${attempt}/${maxAttempts}) for`,
+          finalUrl,
+          err
+        );
+        // Network errors are typically retryable
+        return 'retry';
+      }
+    }
+
+    async function fetchImageWithRetries(task, maxAttempts = 10) {
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const result = await fetchImageOnce(task, attempt, maxAttempts);
+        if (result === 'success') {
+          successfulImages++;
+          return;
+        }
+        if (result === 'non-retryable') {
+          // Don’t hammer a clearly broken URL
+          console.warn('[BackUps] Non-retryable failure; skipping image:', task.finalUrl);
+          return;
+        }
+        // result === 'retry'
+        // Small exponential-ish backoff before next attempt
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
+
+      console.warn(
+        `[BackUps] Giving up after multiple attempts for image:`,
+        task.finalUrl
+      );
+    }
+
+    const imageFetchPromises = [];
+
+    for (const task of imageTasks) {
+      imageFetchPromises.push(
+        (async () => {
+          await fetchImageWithRetries(task);
+          // Mark this image as "done" (either saved or finally failed)
+          completedImages++;
+          updateDownloadProgress();
+        })()
+      );
+    }
+
+    // Wait for all image downloads (with retries) to finish before finalizing ZIP
+    if (imageFetchPromises.length) {
+      await Promise.all(imageFetchPromises);
+    }
+
+    if (downloadStatus) {
+      if (successfulImages === totalImages) {
+        downloadStatus.innerHTML =
+          `<strong>Image downloads complete.</strong><br>` +
+          `<span style="opacity:0.9;">Finalizing BackUps .zip…</span>`;
+      } else {
+        const missing = totalImages - successfulImages;
+        downloadStatus.innerHTML =
+          `<strong>Image download attempts finished.</strong><br>` +
+          `<span style="opacity:0.9;">Finalizing BackUps .zip…</span><br>` +
+          `<span style="color:#ff8b94;">${missing} image(s) could not be fetched after several retries ` +
+          `(gateway timeouts or missing files). All successfully downloaded images are included.</span>`;
+      }
+    }
+
+    // 5) README.txt
+    const readme = [
+      'BackUps by The Refresh',
+      '-----------------------',
+      '',
+      `Policy ID: ${policy}`,
+      '',
+      'Contents:',
+      '- assets.json       : All assets under the policy, including metadata per asset.',
+      '- metadata.csv      : Spreadsheet-friendly view of all on-chain metadata properties.',
+      '- by_asset/*.json   : One CIP-25 721-style JSON file per asset.',
+      '- images/*          : Image files fetched from IPFS / HTTPS image URLs where available.',
+      '',
+      'Generated for backup / analysis. No private keys were used or exposed.',
+    ].join('\n');
+    root.file('README.txt', readme);
+
+    const blob     = await zip.generateAsync({ type: 'blob' });
+    const filename = `BackUps_${policy}.zip`;
+
+    if (downloadStatus) {
+      if (successfulImages === totalImages) {
+        downloadStatus.innerHTML =
+          `<strong>Processing complete!</strong> Your BackUps .zip is ready to save.`;
+      } else {
+        const missing = totalImages - successfulImages;
+        downloadStatus.innerHTML =
+          `<strong>Processing complete!</strong> Your BackUps .zip is ready to save.<br>` +
+          `<span style="color:#ff8b94;">Note: ${missing} image(s) could not be fetched ` +
+          `after multiple retries and are not included in this ZIP.</span>`;
+      }
+    }
+
+    saveAs(blob, filename);
+  } catch (err) {
+    console.error('[BackUps] exportBackupsZip error:', err);
+    if (downloadStatus) {
+      downloadStatus.textContent =
+        'An error occurred while preparing the BackUps .zip. Please try again.';
+    }
+  } finally {
+    if (zipBtn) {
+      zipBtn.disabled = false;
+    }
   }
-
-  // Wait for all image downloads to finish (or fail) before finalizing ZIP
-  if (imageFetchPromises.length) {
-    await Promise.all(imageFetchPromises);
-  }
-
-  // 5) README.txt
-  const readme = [
-    'BackUps by The Refresh',
-    '-----------------------',
-    '',
-    `Policy ID: ${policy}`,
-    '',
-    'Contents:',
-    '- assets.json       : All assets under the policy, including metadata per asset.',
-    '- metadata.csv      : Spreadsheet-friendly view of all on-chain metadata properties.',
-    '- by_asset/*.json   : One CIP-25 721-style JSON file per asset.',
-    '- images/*          : Image files fetched from IPFS / HTTPS image URLs where available.',
-    '',
-    'Generated for backup / analysis. No private keys were used or exposed.',
-  ].join('\n');
-  root.file('README.txt', readme);
-
-  const blob     = await zip.generateAsync({ type: 'blob' });
-  const filename = `BackUps_${policy}.zip`;
-  saveAs(blob, filename);
 }
+
+
+
 
 async function payForCurrentPolicy() {
   if (!meshWallet) {
@@ -1517,10 +2087,11 @@ async function payForCurrentPolicy() {
     // Nothing to do here; holders don’t pay in this flow
     return;
   }
-  if (!backupsLastPolicyId || !backupsBaseAssets || backupsCurrentFeeAda <= 0) {
-    alert('Scan a policy with assets before paying.');
-    return;
-  }
+if (!backupsLastPolicyId || backupsCurrentFeeAda <= 0) {
+  alert('Scan a policy with assets before paying.');
+  return;
+}
+
 
   const feeStatus = document.getElementById('backupsFeeStatus');
   const payBtn    = document.getElementById('backupsPayBtn');
@@ -1566,13 +2137,39 @@ async function payForCurrentPolicy() {
     if (scanStatus) {
       scanStatus.textContent = 'Scanning assets and fetching on-chain metadata…';
     }
-    await scanMetadataForCurrentPolicy(scanStatus || feeStatus || null);
+
+    const downloadStatus = document.getElementById('backupsDownloadStatus');
+    if (downloadStatus) {
+      const headerLine =
+        'Processing BackUps request… Fetching asset metadata and preparing ZIP…';
+      downloadStatus.innerHTML =
+        `<strong>${headerLine}</strong><br>` +
+        `<span style="opacity:0.85;">Preparing metadata files…</span>`;
+    }
+
+    await scanMetadataForCurrentPolicy(downloadStatus || scanStatus || feeStatus || null);
+
     if (scanStatus) {
       scanStatus.textContent = 'Scan complete.';
     }
 
+
     // renderBackupsResults() was called inside scanMetadataForCurrentPolicy,
     // so at this point ZIP is unlocked for this policy.
+    
+        // 🔹 Save/update previous search with receipt info for this policy
+    await savePreviousSearch(
+      backupsLastPolicyId,
+      backupsCurrentAssetCount,
+      backupsCurrentFeeAda,
+      {
+        paidFeeAda: backupsCurrentFeeAda,
+        paidAt: Date.now(),
+        paidTxHash: txHash,
+        paidAddress: userAddress || null,
+      }
+    );
+
 
   } catch (err) {
     console.error('[BackUps] payForCurrentPolicy error:', err);
@@ -1610,9 +2207,9 @@ async function initLocApp(accessVia) {
 
 if (accessTypeEl) {
   if (accessVia === 'holder') {
-    accessTypeEl.textContent = 'Free access via OG The Refresh holdings.';
+    accessTypeEl.textContent = 'VIP access via The Refresh Whale status.';
   } else {
-    accessTypeEl.textContent = 'Per-policy BackUps pricing (non-holder).';
+    accessTypeEl.textContent = 'Per-policy BackUps pricing (non-whale).';
   }
 }
 backupsIsHolder = (accessVia === 'holder');
@@ -1629,6 +2226,38 @@ payBtn?.addEventListener('click', payForCurrentPolicy);
 
     // Render any previously loaded searches into the UI
   renderPreviousSearches();
+  
+    const policyInput = document.getElementById('backupsPolicyInput');
+
+  function handlePolicyInputChange() {
+    if (!policyInput || !scanBtn) return;
+
+    const val = policyInput.value.trim();
+    if (!val) {
+      // Empty field => allow a new scan
+      scanBtn.disabled = false;
+      return;
+    }
+
+    const existing = backupsPreviousSearches.find(
+      (s) => s.policyId === val
+    );
+
+    if (existing) {
+      // 🔹 As soon as the input matches a previous policy:
+      //     - reuse the quote
+      //     - lock the Scan button
+      runQuotedScanFlow(existing);
+      scanBtn.disabled = true;
+    } else {
+      // New policy (no quote yet) => scanning is allowed
+      scanBtn.disabled = false;
+    }
+  }
+
+  policyInput?.addEventListener('input', handlePolicyInputChange);
+  policyInput?.addEventListener('blur', handlePolicyInputChange);
+
 }
 
 async function checkPolicyAssets() {
