@@ -494,7 +494,7 @@
     <div class="container">
       <h1>BackUps Access</h1>
 
-     <p id="description">BackUps is free for The Refresh Whales. Others pay a 10₳ minimum, scaled at 100₳ per 1000 assets per policy BackUp.</p>
+     <p id="description">BackUps is free for The Refresh Whales. Others pay a 10₳ minimum, scaled at 10₳ per 50 assets per policy BackUp.</p>
 
       <p id="instructions"></p>
 
@@ -513,8 +513,9 @@
     <div class="card">
       <h2>Access Gate</h2>
 <p class="access-message">
-  The Refresh Whales get in VIP. Pricing for others is 10₳ minimum, scaled at 100₳ per 1000 assets (per policy BackUp).
+  The Refresh Whales get in VIP. Pricing for others is 10₳ per 50 assets per policy BackUp (minimum 10₳).
 </p>
+
 
       <p id="gateBlurb"></p>
       <p id="accessMessage" class="access-message"></p>
@@ -559,18 +560,22 @@ const GATE_RECIPIENT_ADDRESS =
 
 // =========================================================
 // Pricing / Fees
-// Linear: 100₳ per 1000 assets, 10₳ minimum
-// => 0.1₳ per asset, with a 10₳ floor
+// 10₳ per 50 assets (per policy BackUp), minimum 10₳
+// Examples:
+//  1–50 assets  -> 10₳
+// 51–100 assets -> 20₳
+// 101–150       -> 30₳
 // =========================================================
-const ACCESS_FEE_PER_1000_ADA = 100;
-const MIN_BACKUPS_FEE_ADA     = 10;
+const ASSETS_PER_BLOCK        = 50;
+const ACCESS_FEE_PER_BLOCK_ADA = 10;
 
 function computeBackupsFeeAda(assetCount) {
   if (!assetCount || assetCount <= 0) return 0;
-  const raw = (ACCESS_FEE_PER_1000_ADA / 1000) * assetCount; // 0.1₳ per asset
-  const fee = Math.max(MIN_BACKUPS_FEE_ADA, Math.round(raw));
-  return fee;
+  const blocks = Math.ceil(assetCount / ASSETS_PER_BLOCK);
+  const fee    = blocks * ACCESS_FEE_PER_BLOCK_ADA;
+  return Math.max(ACCESS_FEE_PER_BLOCK_ADA, fee); // still enforce 10₳ minimum
 }
+
 
 
 // =========================================================
@@ -636,8 +641,7 @@ function getPrimaryPurchaseUrl() {
 // Set gate text
 instructionsEl.textContent = `Connect a Cardano wallet to continue.`;
 gateBlurbEl.textContent =
-  `If your wallet holds at least ${buildRequirementsLine()}, you have free BackUps access. ` +
-  `Otherwise, BackUps pricing for non-holders starts at 10₳ and scales at 100₳ per 1000 assets (per policy BackUp).`;
+  `If your wallet holds at least ${buildRequirementsLine()}, you have VIP BackUps access with no additional fee.`;
 
 // ---------------------------------------------------------
 // Mesh wallet detection
@@ -922,10 +926,11 @@ function renderBackupsResults() {
     } else {
       // Non-holder, not yet paid
       if (feeStatus) {
-        feeStatus.textContent =
-          `This policy has ${count} asset(s).\n` +
-          `BackUps fee is ${backupsCurrentFeeAda}₳ (10₳ minimum, scaled at 100₳ per 1000 assets).\n` +
-          `Press “Pay & unlock ZIP” to process the transaction.`;
+feeStatus.textContent =
+  `This policy has ${count} asset(s).\n` +
+  `BackUps fee is ${backupsCurrentFeeAda}₳ (10₳ per 50 assets, minimum 10₳).\n` +
+  `Press “Pay & unlock ZIP” to process the transaction.`;
+
       }
       if (payBtn) {
         payBtn.textContent = `Pay ${backupsCurrentFeeAda}₳ & unlock ZIP`;
@@ -1026,10 +1031,11 @@ async function backupsScanForPolicy() {
         if (zipBtn) zipBtn.disabled = true;
       } else {
         if (feeStatus) {
-          feeStatus.textContent =
-            `This policy has ${backupsCurrentAssetCount} asset(s).\n` +
-            `BackUps fee is ${backupsCurrentFeeAda}₳ (10₳ minimum, scaled at 100₳ per 1000 assets).\n` +
-            `Press “Pay & unlock ZIP” to process the transaction.`;
+feeStatus.textContent =
+  `This policy has ${backupsCurrentAssetCount} asset(s).\n` +
+  `BackUps fee is ${backupsCurrentFeeAda}₳ (10₳ per 50 assets, minimum 10₳).\n` +
+  `Press “Pay & unlock ZIP” to process the transaction.`;
+
         }
         if (payBtn) {
           payBtn.textContent = `Pay ${backupsCurrentFeeAda}₳ & unlock ZIP`;
@@ -1430,8 +1436,7 @@ async function checkPolicyAssets() {
       accessMessage.classList.add('error');
       accessMessage.innerHTML =
         `You don’t yet meet the VIP BackUps access requirements.<br>` +
-        `Pricing for non-holders is <strong>10₳ minimum, scaled at 100₳ per 1000 assets</strong> (per policy BackUp).<br>` +
-        `Press “Enter BackUps” below to continue and scan a policy.`;
+        `Press “Enter BackUps” below to continue and scan a policy with per-policy pricing.`;
 
 
       payAccessBtn.textContent = 'Enter BackUps';
