@@ -125,6 +125,17 @@
       gap: 0.5rem;
     }
 
+    button:disabled,
+.loc-btn-primary:disabled,
+.loc-btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+    
+
     #connectBtn {
       background: linear-gradient(135deg, #ff3366, #ffc857);
       color: #050814;
@@ -346,6 +357,37 @@
       opacity: 0.9;
     }
 
+    .prev-search-item {
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  background: rgba(10, 18, 46, 0.7);
+  margin-bottom: 0.25rem;
+  cursor: pointer;
+}
+
+.prev-search-item:hover {
+  background: rgba(20, 30, 70, 0.9);
+}
+
+.prev-search-policy {
+  font-family: monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+}
+
+.prev-search-meta {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.prev-search-older-toggle {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+
     .table-wrapper {
       max-height: 260px;
       overflow: auto;
@@ -437,6 +479,13 @@
           </p>
 
           <p id="backupsScanStatus" class="loc-tx-status"></p>
+          <div id="backupsPreviousSearches" class="loc-field">
+  <span>Previous Searches</span>
+  <div id="backupsPrevList" class="loc-hint">
+    No previous searches yet.
+  </div>
+</div>
+
         </div>
       </div>
 
@@ -462,7 +511,8 @@
 </div>
 
 <p id="backupsFeeStatus" class="loc-tx-status"></p>
-
+<p id="backupsQuoteWarning" class="loc-tx-status"></p>
+          
 <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem;">
   <button type="button"
           id="backupsPayBtn"
@@ -607,6 +657,7 @@ let backupsLastPolicyId = '';
 let backupsLastRows = [];     // [{ unit, policyId, assetName, quantity, metadata }, ...]
 let backupsLastKeys = [];     // sorted list of all metadata keys
 let backupsBaseAssets = null; // raw /assets/policy list (no metadata yet)
+let backupsPreviousSearches = []; // [{ policyId, assetCount, feeAda, quotedAt }]
 
 let backupsIsHolder = false;                 // true if wallet meets Refresh requirement
 let backupsRequiresPayment = false;          // true for non-holders
@@ -748,6 +799,188 @@ function hexToAscii(hex) {
   }
   return str;
 }
+
+async function loadPreviousSearches() {
+  if (!userIdentity) return;
+
+  try {
+    const res = await fetch('backups_searches.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'list',
+        identity: userIdentity,
+      }),
+    });
+
+    if (!res.ok) return;
+
+    const data = await res.json().catch(() => null);
+    if (!data || !Array.isArray(data.searches)) return;
+
+    backupsPreviousSearches = data.searches;
+    renderPreviousSearches();
+  } catch (err) {
+    console.warn('[BackUps] loadPreviousSearches error:', err);
+  }
+}
+
+async function savePreviousSearch(policyId, assetCount, feeAda) {
+  if (!userIdentity || !policyId) return;
+
+  const existingIndex = backupsPreviousSearches.findIndex(
+    (s) => s.policyId === policyId
+  );
+  const now = Date.now();
+
+  const record = { policyId, assetCount, feeAda, quotedAt: now };
+
+  if (existingIndex >= 0) {
+    backupsPreviousSearches[existingIndex] = record;
+  } else {
+    backupsPreviousSearches.push(record);
+  }
+
+  // keep newest first locally
+  backupsPreviousSearches.sort(
+    (a, b) => (b.quotedAt || 0) - (a.quotedAt || 0)
+  );
+  renderPreviousSearches();
+
+  try {
+    await fetch('backups_searches.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'save',
+        identity: userIdentity,
+        search: record,
+      }),
+    });
+  } catch (err) {
+    console.warn('[BackUps] savePreviousSearch error:', err);
+  }
+}
+
+function renderPreviousSearches() {
+  const wrapper = document.getElementById('backupsPrevList');
+  if (!wrapper) return;
+
+  if (!backupsPreviousSearches.length) {
+    wrapper.textContent = 'No previous searches yet.';
+    return;
+  }
+
+  wrapper.innerHTML = '';
+
+  const maxAlwaysVisible = 3;
+  const visibles = backupsPreviousSearches.slice(0, maxAlwaysVisible);
+  const older   = backupsPreviousSearches.slice(maxAlwaysVisible);
+
+  const makeItem = (s) => {
+    const div = document.createElement('div');
+    div.className = 'prev-search-item';
+    div.innerHTML = `
+      <div class="prev-search-policy">${s.policyId}</div>
+      <div class="prev-search-meta">
+        ${s.assetCount} asset(s) • quoted fee ${s.feeAda}₳
+      </div>
+    `;
+    div.addEventListener('click', () => {
+      const input = document.getElementById('backupsPolicyInput');
+      if (input) input.value = s.policyId;
+      runQuotedScanFlow(s);
+    });
+    return div;
+  };
+
+  visibles.forEach((s) => wrapper.appendChild(makeItem(s)));
+
+  if (older.length) {
+    const olderToggle = document.createElement('div');
+    olderToggle.className = 'prev-search-older-toggle';
+    olderToggle.textContent = 'Show older searches';
+    let expanded = false;
+
+    olderToggle.addEventListener('click', () => {
+      expanded = !expanded;
+      olderToggle.textContent = expanded
+        ? 'Hide older searches'
+        : 'Show older searches';
+
+      if (expanded) {
+        older.forEach((s) => wrapper.appendChild(makeItem(s)));
+      } else {
+        // re-render to collapse
+        renderPreviousSearches();
+      }
+    });
+
+    wrapper.appendChild(olderToggle);
+  }
+}
+
+function runQuotedScanFlow(search) {
+  const statusEl  = document.getElementById('backupsScanStatus');
+  const summary   = document.getElementById('backupsResultsSummary');
+  const feeStatus = document.getElementById('backupsFeeStatus');
+  const payBtn    = document.getElementById('backupsPayBtn');
+  const zipBtn    = document.getElementById('backupsDownloadZipBtn');
+  const quoteWarn = document.getElementById('backupsQuoteWarning');
+
+  backupsHasScan              = false;
+  backupsLastPolicyId         = search.policyId;
+  backupsLastRows             = [];
+  backupsLastKeys             = [];
+  backupsBaseAssets           = null;
+  backupsCurrentAssetCount    = search.assetCount;
+  backupsCurrentFeeAda        = search.feeAda;
+  backupsCurrentFeeLovelace   = String(search.feeAda * 1_000_000);
+  backupsPaidForCurrentPolicy = backupsIsHolder; // holders still free
+
+  if (zipBtn) zipBtn.disabled = true;
+
+  if (statusEl) {
+    statusEl.textContent =
+      'Using your previous BackUps quote for this policy. No new on-chain scan was performed.';
+  }
+
+  if (summary) {
+    summary.innerHTML =
+      `<span>Policy <code>${search.policyId}</code> has a quoted total of <strong>${search.assetCount}</strong> asset(s).</span>`;
+  }
+
+  if (feeStatus) {
+    if (backupsIsHolder) {
+      feeStatus.textContent =
+        `You are a Refresh holder (≥ ${ACCESS_POLICIES[0].minAssets}). No BackUps fee for this policy.`;
+    } else if (search.feeAda > 0) {
+      feeStatus.textContent =
+        `Quoted BackUps fee for this policy is ${search.feeAda}₳ (10₳ per 50 assets, minimum 10₳).\n` +
+        `Press “Pay & unlock ZIP” to proceed.`;
+    } else {
+      feeStatus.textContent =
+        'No assets under this policy in your previous quote.';
+    }
+  }
+
+  if (quoteWarn) {
+    quoteWarn.textContent =
+      'You can scan one policy one time. This quote is based on the asset count shown above.\n' +
+      'If you do not pay and download today and more assets are minted later, you will need to pay the quoted amount to begin the BackUps process, and will be asked to pay the difference if the asset count has changed, before the ZIP can be downloaded.';
+  }
+
+  if (payBtn) {
+    if (!backupsIsHolder && search.feeAda > 0) {
+      payBtn.textContent = `Pay ${search.feeAda}₳ & unlock ZIP`;
+      payBtn.style.display = 'inline-flex';
+      payBtn.disabled = false;
+    } else {
+      payBtn.style.display = 'none';
+    }
+  }
+}
+
 
 // ---------------------------------------------------------
 // Blockfrost policy-wide scan helpers for BackUps
@@ -951,8 +1184,12 @@ async function backupsScanForPolicy() {
   const summary   = document.getElementById('backupsResultsSummary');
   const feeStatus = document.getElementById('backupsFeeStatus');
   const payBtn    = document.getElementById('backupsPayBtn');
+  const quoteWarn = document.getElementById('backupsQuoteWarning');
+
 
   // reset state for new scan
+  if (feeStatus) feeStatus.textContent = '';
+  if (quoteWarn) quoteWarn.textContent = '';
   if (statusEl) statusEl.textContent = '';
   backupsHasScan              = false;
   backupsLastPolicyId         = '';
@@ -1002,6 +1239,9 @@ async function backupsScanForPolicy() {
     backupsCurrentAssetCount  = baseAssets.length;
     backupsCurrentFeeAda      = computeBackupsFeeAda(backupsCurrentAssetCount);
     backupsCurrentFeeLovelace = String(backupsCurrentFeeAda * 1_000_000);
+        // Remember this quote server-side to avoid repeated full scans for this policy
+    savePreviousSearch(rawPolicy, backupsCurrentAssetCount, backupsCurrentFeeAda);
+
 
     if (!baseAssets.length) {
       if (summary) {
@@ -1043,6 +1283,14 @@ feeStatus.textContent =
           payBtn.disabled = false;
         }
         if (zipBtn) zipBtn.disabled = true;
+
+        if (quoteWarn) {
+          quoteWarn.textContent =
+            'You can scan one policy one time. This quote is based on the asset count shown above.\n' +
+            'If you do not pay and download today and more assets are minted later, you will need to pay the quoted amount again to begin a new BackUps run, and you may be asked to pay the difference to cover the higher count.\n' +
+            'After payment, if the on-chain asset count has changed by the time metadata is fetched for download, an additional payment may be required before the ZIP can be prepared.';
+        }
+
       }
 
       if (statusEl) {
@@ -1380,6 +1628,8 @@ scanBtn?.addEventListener('click', backupsScanForPolicy);
 zipBtn?.addEventListener('click', exportBackupsZip);
 payBtn?.addEventListener('click', payForCurrentPolicy);
 
+    // Render any previously loaded searches into the UI
+  renderPreviousSearches();
 }
 
 async function checkPolicyAssets() {
@@ -1546,10 +1796,14 @@ async function connect() {
       userIdentity = userAddress;
     }
 
+    // Load any previous searches for this identity (if any)
+    await loadPreviousSearches();
+
     btn.textContent = `Connected: ${walletId}`;
     sel.disabled = true;
 
     await checkPolicyAssets();
+
 
   } catch (e) {
     console.error('Wallet connection failed:', e);
