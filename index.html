@@ -221,6 +221,18 @@
       font-size: 2.1rem;
       letter-spacing: 0.04em;
     }
+    .backups-logo-text {
+  display: inline-block;
+  background: linear-gradient(135deg, #ff9a3c, #ffd869);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 800;
+  text-shadow: 0 0 18px rgba(255, 200, 120, 0.55);
+}
+
 
     /* Gated area layout */
     .loc-container {
@@ -376,6 +388,56 @@
 }
 
 
+.access-steps {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gate-subtitle {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.gate-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+.gate-list li {
+  margin-bottom: 0.25rem;
+}
+
+.loc-substeps {
+  margin-top: 0.35rem;
+}
+
+.loc-substeps ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+
+.loc-substeps li {
+  margin-bottom: 0.2rem;
+}
+
+.loc-legal {
+  margin-top: 0.75rem;
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+.loc-legal-text {
+  margin: 0;
+  line-height: 1.5;
+}
+
 
     .prev-search-item {
   padding: 0.35rem 0.5rem;
@@ -524,12 +586,25 @@
 <div id="protectedArea" class="hidden">
   <div id="backupsContainer" class="loc-container">
     <header class="loc-header">
-      <h2 class="loc-title">
-        BackUps <span class="loc-title-accent">by The Refresh</span>
-      </h2>
+<h2 class="loc-title">
+  <span class="backups-logo-text">BackUps</span>
+  <span class="loc-title-accent">by The Refresh</span>
+</h2>
+
       <p class="loc-subtitle">
         One-click backup of all assets under a policy ID. No wallet scan, chain-wide view.
       </p>
+
+      <div class="loc-substeps">
+  <ul>
+    <li>Connect your wallet to confirm your access type.</li>
+    <li>Paste the policy ID you want to BackUp.</li>
+    <li>Review the quoted fee and pay if you’re not a Refresh whale.</li>
+    <li>Once the payment is confirmed, BackUps downloads are unlocked.</li>
+  </ul>
+</div>
+
+      
     </header>
 
     <section class="loc-status-block">
@@ -633,13 +708,24 @@
   <p id="backupsDownloadStatus" class="loc-tx-status"></p>
 </div>
 
-
-
         </div>
       </div>
     </section>
+        <section class="loc-status-block loc-legal">
+      <p class="loc-legal-text">
+        The Refresh and/or BackUps are not responsible for what you or anyone,
+        that obtains the files and/or images you download, do with those files
+        and/or images. This tool accesses decentralized data fully available on
+        the blockchain. You are solely responsible for what happens with the
+        content you download, what content you decide to download, and whatever
+        consequences follow those actions.
+      </p>
+    </section>
+
   </div>
 </div>
+
+  
 
 <!-- WALLET GATE OVERLAY -->
 <div id="gateOverlay">
@@ -647,9 +733,12 @@
 
   <header>
     <div class="container">
-      <h1>BackUps Access</h1>
+      <h1><span class="backups-logo-text">BackUps</span></h1>
 
-     <p id="description">BackUps is free for The Refresh Whales. Others pay a 10₳ minimum, scaled at 10₳ per 50 assets per policy BackUp.</p>
+     <p id="description">
+  Refresh Whales holding 25+ OG The Refresh have VIP access with no charge usage.
+  Others pay a 10₳ minimum, scaled at 10₳ per 50 assets per policy BackUp.
+</p>
 
       <p id="instructions"></p>
 
@@ -666,13 +755,31 @@
 
   <div class="container">
     <div class="card">
-      <h2>Access Gate</h2>
-<p class="access-message">
-  The Refresh Whales get in VIP. Pricing for others is 10₳ per 50 assets per policy BackUp (minimum 10₳).
-</p>
+<h2>Access Gate</h2>
 
+<div class="access-steps">
+  <h3 class="gate-subtitle">How BackUps works</h3>
+  <ul class="gate-list">
+    <li>Connect a Cardano wallet to determine your access type.</li>
+    <li>Enter the policy ID you want to scan.</li>
+    <li>Pay the BackUps fee if you’re not a Refresh whale.</li>
+    <li>Once the transaction confirms, your downloads are enabled.</li>
+  </ul>
+</div>
 
-      <p id="gateBlurb"></p>
+<div class="access-steps">
+  <h3 class="gate-subtitle">Your BackUps download includes</h3>
+  <ul class="gate-list">
+    <li>Complete metadata for each individual asset, with policy IDs and IPFS links exactly as they are on-chain.</li>
+    <li>Full collection metadata with policy ID and IPFS preserved as-is.</li>
+    <li>Images and files saved with filenames tied to their corresponding asset.</li>
+    <li>A CSV with a collection-wide breakdown of assets and metadata.</li>
+    <li>Downloadable receipts and scan history for previous purchases.</li>
+  </ul>
+</div>
+
+<p id="gateBlurb" class="loc-hint"></p>
+
       <p id="accessMessage" class="access-message"></p>
 
       <!-- Shown only if policy requirements are NOT met -->
