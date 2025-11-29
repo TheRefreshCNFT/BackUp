@@ -357,6 +357,7 @@
       border-collapse: collapse;
       font-size: 0.8rem;
     }
+    
 
     .loc-results-table th,
     .loc-results-table td {
@@ -372,6 +373,11 @@
       top: 0;
       z-index: 1;
     }
+
+    #backupsResultsSummary code {
+  font-size: 0.5em; /* roughly half the surrounding text size */
+}
+
 
     @media (max-width: 800px) {
       .loc-main {
@@ -488,7 +494,7 @@
     <div class="container">
       <h1>BackUps Access</h1>
 
-      <p id="description">BackUps is free for The Refresh Whales. Others pay 100₳ per 1000 assets per policy BackUp.</p>
+     <p id="description">BackUps is free for The Refresh Whales. Others pay a 10₳ minimum, scaled at 100₳ per 1000 assets per policy BackUp.</p>
 
       <p id="instructions"></p>
 
@@ -507,9 +513,8 @@
     <div class="card">
       <h2>Access Gate</h2>
 <p class="access-message">
-  The Refresh Whales get in VIP. Pricing for others is 100₳ per 1000 assets (per policy BackUp).
+  The Refresh Whales get in VIP. Pricing for others is 10₳ minimum, scaled at 100₳ per 1000 assets (per policy BackUp).
 </p>
-
 
       <p id="gateBlurb"></p>
       <p id="accessMessage" class="access-message"></p>
@@ -554,14 +559,17 @@ const GATE_RECIPIENT_ADDRESS =
 
 // =========================================================
 // Pricing / Fees
-// 100₳ per 1000 assets (per policy BackUp) for non-holders
+// Linear: 100₳ per 1000 assets, 10₳ minimum
+// => 0.1₳ per asset, with a 10₳ floor
 // =========================================================
 const ACCESS_FEE_PER_1000_ADA = 100;
+const MIN_BACKUPS_FEE_ADA     = 10;
 
 function computeBackupsFeeAda(assetCount) {
   if (!assetCount || assetCount <= 0) return 0;
-  const blocks = Math.ceil(assetCount / 1000);
-  return blocks * ACCESS_FEE_PER_1000_ADA;
+  const raw = (ACCESS_FEE_PER_1000_ADA / 1000) * assetCount; // 0.1₳ per asset
+  const fee = Math.max(MIN_BACKUPS_FEE_ADA, Math.round(raw));
+  return fee;
 }
 
 
@@ -593,7 +601,9 @@ let backupsHasScan = false;
 let backupsLastPolicyId = '';
 let backupsLastRows = [];     // [{ unit, policyId, assetName, quantity, metadata }, ...]
 let backupsLastKeys = [];     // sorted list of all metadata keys
-  let backupsIsHolder = false;                 // true if wallet meets Refresh requirement
+let backupsBaseAssets = null; // raw /assets/policy list (no metadata yet)
+
+let backupsIsHolder = false;                 // true if wallet meets Refresh requirement
 let backupsRequiresPayment = false;          // true for non-holders
 let backupsPaidForCurrentPolicy = false;     // set to true after successful payment
 let backupsCurrentFeeAda = 0;                // dynamic fee for current scan
@@ -627,8 +637,7 @@ function getPrimaryPurchaseUrl() {
 instructionsEl.textContent = `Connect a Cardano wallet to continue.`;
 gateBlurbEl.textContent =
   `If your wallet holds at least ${buildRequirementsLine()}, you have free BackUps access. ` +
-  `Otherwise, BackUps costs 100₳ per 1000 assets (per policy BackUp) for non-holders.`;
-
+  `Otherwise, BackUps pricing for non-holders starts at 10₳ and scales at 100₳ per 1000 assets (per policy BackUp).`;
 
 // ---------------------------------------------------------
 // Mesh wallet detection
@@ -783,6 +792,55 @@ async function fetchMetadataForAsset(unit) {
   return data.onchain_metadata || {};
 }
 
+async function scanMetadataForCurrentPolicy(statusEl) {
+  if (!backupsLastPolicyId) return;
+
+  const policyId = backupsLastPolicyId;
+
+  let baseAssets = backupsBaseAssets;
+  if (!Array.isArray(baseAssets) || baseAssets.length === 0) {
+    baseAssets = await fetchAllAssetsForPolicy(policyId);
+    backupsBaseAssets = baseAssets;
+  }
+
+  const allKeys = new Set();
+  const rows    = [];
+  const total   = baseAssets.length;
+
+  for (let i = 0; i < total; i++) {
+    const base = baseAssets[i];
+    const unit = base.asset; // full hex unit (policy + name)
+    const quantity = String(base.quantity ?? '0');
+
+    const policyHex = unit.slice(0, 56);
+    const nameHex   = unit.slice(56);
+    const assetName = hexToAscii(nameHex) || '(no ASCII name)';
+
+    if (statusEl) {
+      statusEl.textContent = `Scanning ${i + 1} / ${total}…`;
+    }
+
+    const metadata = await fetchMetadataForAsset(unit);
+
+    Object.keys(metadata).forEach(k => allKeys.add(k));
+
+    rows.push({
+      unit,
+      policyId: policyHex,
+      assetName,
+      quantity,
+      metadata,
+    });
+  }
+
+  backupsHasScan  = true;
+  backupsLastRows = rows;
+  backupsLastKeys = Array.from(allKeys).sort();
+
+  renderBackupsResults();
+}
+
+
 function renderBackupsResults() {
   const table    = document.getElementById('backupsResultsTable');
   const tbody    = table?.querySelector('tbody');
@@ -805,11 +863,12 @@ function renderBackupsResults() {
   summary.innerHTML =
     `<span>Found <strong>${count}</strong> asset(s) under policy <code>${backupsLastPolicyId}</code>.</span>`;
 
-  // reset per-scan payment state
-  backupsCurrentAssetCount = count;
-  backupsCurrentFeeAda = computeBackupsFeeAda(count);
-  backupsCurrentFeeLovelace = String(backupsCurrentFeeAda * 1_000_000);
-  backupsPaidForCurrentPolicy = backupsIsHolder; // holders never pay
+  // recompute fee + asset count based on actual rows
+  backupsCurrentAssetCount   = count;
+  backupsCurrentFeeAda       = computeBackupsFeeAda(count);
+  backupsCurrentFeeLovelace  = String(backupsCurrentFeeAda * 1_000_000);
+  // NOTE: do NOT touch backupsPaidForCurrentPolicy here – it’s controlled by gate/payment flow
+
 
   const feeStatus = document.getElementById('backupsFeeStatus');
   const payBtn    = document.getElementById('backupsPayBtn');
@@ -850,11 +909,22 @@ function renderBackupsResults() {
           'No assets under this policy, so there is nothing to pay or download.';
       }
       zipBtn.disabled = true;
+    } else if (backupsPaidForCurrentPolicy) {
+      // Non-holder, but this policy has already been paid for in this session
+      if (feeStatus) {
+        feeStatus.textContent =
+          `Payment confirmed for this policy.\nYou can now download the BackUps .zip.`;
+      }
+      if (payBtn) {
+        payBtn.style.display = 'none';
+      }
+      zipBtn.disabled = false;
     } else {
+      // Non-holder, not yet paid
       if (feeStatus) {
         feeStatus.textContent =
           `This policy has ${count} asset(s).\n` +
-          `BackUps fee is ${backupsCurrentFeeAda}₳ (100₳ per 1000 assets).\n` +
+          `BackUps fee is ${backupsCurrentFeeAda}₳ (10₳ minimum, scaled at 100₳ per 1000 assets).\n` +
           `Press “Pay & unlock ZIP” to process the transaction.`;
       }
       if (payBtn) {
@@ -873,15 +943,34 @@ async function backupsScanForPolicy() {
   const zipBtn    = document.getElementById('backupsDownloadZipBtn');
   const table     = document.getElementById('backupsResultsTable');
   const tbody     = table?.querySelector('tbody');
+  const summary   = document.getElementById('backupsResultsSummary');
+  const feeStatus = document.getElementById('backupsFeeStatus');
+  const payBtn    = document.getElementById('backupsPayBtn');
 
+  // reset state for new scan
   if (statusEl) statusEl.textContent = '';
-  backupsHasScan       = false;
-  backupsLastPolicyId  = '';
-  backupsLastRows      = [];
-  backupsLastKeys      = [];
-  zipBtn.disabled      = true;
+  backupsHasScan              = false;
+  backupsLastPolicyId         = '';
+  backupsLastRows             = [];
+  backupsLastKeys             = [];
+  backupsBaseAssets           = null;
+  backupsPaidForCurrentPolicy = backupsIsHolder; // holders effectively "prepaid" (free)
+  backupsCurrentAssetCount    = 0;
+  backupsCurrentFeeAda        = 0;
+  backupsCurrentFeeLovelace   = '0';
+
+  if (zipBtn) zipBtn.disabled = true;
   if (tbody) tbody.innerHTML = '';
   table?.classList.add('hidden');
+  if (summary) {
+    summary.innerHTML =
+      '<span>No scan yet. Paste a policy ID and press “Scan policy on chain”.</span>';
+  }
+  if (feeStatus) feeStatus.textContent = '';
+  if (payBtn) {
+    payBtn.style.display = 'none';
+    payBtn.disabled = false;
+  }
 
   const rawPolicy = (policyEl?.value || '').trim();
   if (!rawPolicy) {
@@ -900,57 +989,60 @@ async function backupsScanForPolicy() {
   }
 
   try {
-    if (statusEl) statusEl.textContent = 'Scanning policy via Blockfrost…';
+    if (statusEl) statusEl.textContent = 'Fetching assets for policy via Blockfrost…';
 
     const baseAssets = await fetchAllAssetsForPolicy(rawPolicy);
+    backupsBaseAssets         = baseAssets;
+    backupsLastPolicyId       = rawPolicy;
+    backupsCurrentAssetCount  = baseAssets.length;
+    backupsCurrentFeeAda      = computeBackupsFeeAda(backupsCurrentAssetCount);
+    backupsCurrentFeeLovelace = String(backupsCurrentFeeAda * 1_000_000);
+
     if (!baseAssets.length) {
-      backupsHasScan      = true;
-      backupsLastPolicyId = rawPolicy;
-      renderBackupsResults();
+      if (summary) {
+        summary.innerHTML =
+          `<span>No assets under policy <code>${rawPolicy}</code> were found on chain.</span>`;
+      }
       if (statusEl) statusEl.textContent = 'Scan complete. No assets under this policy.';
       return;
     }
 
-    const allKeys = new Set();
-    const rows    = [];
+    if (backupsIsHolder) {
+      // Holders: do full metadata scan immediately and unlock ZIP
+      await scanMetadataForCurrentPolicy(statusEl);
+      if (statusEl) statusEl.textContent = 'Scan complete.';
+    } else {
+      // Non-holders: show count + fee, but DO NOT fetch per-asset metadata yet
+      if (summary) {
+        summary.innerHTML =
+          `<span>Policy <code>${rawPolicy}</code> has <strong>${backupsCurrentAssetCount}</strong> asset(s).</span>`;
+      }
 
-    // fetch metadata for each asset (sequentially; can be optimized later if needed)
-    for (let i = 0; i < baseAssets.length; i++) {
-      const base = baseAssets[i];
-      const unit = base.asset; // full hex unit (policy + name)
-      const quantity = String(base.quantity ?? '0');
-
-      const policyHex = unit.slice(0, 56);
-      const nameHex   = unit.slice(56);
-      const assetName = hexToAscii(nameHex) || '(no ASCII name)';
+      if (backupsCurrentFeeAda <= 0) {
+        if (feeStatus) {
+          feeStatus.textContent =
+            'No assets under this policy, so there is nothing to pay or download.';
+        }
+        if (zipBtn) zipBtn.disabled = true;
+      } else {
+        if (feeStatus) {
+          feeStatus.textContent =
+            `This policy has ${backupsCurrentAssetCount} asset(s).\n` +
+            `BackUps fee is ${backupsCurrentFeeAda}₳ (10₳ minimum, scaled at 100₳ per 1000 assets).\n` +
+            `Press “Pay & unlock ZIP” to process the transaction.`;
+        }
+        if (payBtn) {
+          payBtn.textContent = `Pay ${backupsCurrentFeeAda}₳ & unlock ZIP`;
+          payBtn.style.display = 'inline-flex';
+          payBtn.disabled = false;
+        }
+        if (zipBtn) zipBtn.disabled = true;
+      }
 
       if (statusEl) {
         statusEl.textContent =
-          `Scanning ${i + 1} / ${baseAssets.length}…`;
+          'Asset list fetched. Complete payment to fetch metadata and enable ZIP download.';
       }
-
-      const metadata = await fetchMetadataForAsset(unit);
-
-      Object.keys(metadata).forEach(k => allKeys.add(k));
-
-      rows.push({
-        unit,
-        policyId: policyHex,
-        assetName,
-        quantity,
-        metadata,
-      });
-    }
-
-    backupsHasScan      = true;
-    backupsLastPolicyId = rawPolicy;
-    backupsLastRows     = rows;
-    backupsLastKeys     = Array.from(allKeys).sort();
-
-    renderBackupsResults();
-
-    if (statusEl) {
-      statusEl.textContent = 'Scan complete.';
     }
 
   } catch (err) {
@@ -961,6 +1053,7 @@ async function backupsScanForPolicy() {
     }
   }
 }
+
 
 function csvEscape(value) {
   const str = value == null ? '' : String(value);
@@ -974,6 +1067,11 @@ async function exportBackupsZip() {
   if (!backupsHasScan || !backupsLastRows.length || !window.JSZip || !window.saveAs) {
     return;
   }
+  if (backupsRequiresPayment && !backupsIsHolder && !backupsPaidForCurrentPolicy) {
+    alert('Complete payment for this policy before downloading the BackUps .zip.');
+    return;
+  }
+
 
   const zip    = new JSZip();
   const policy = backupsLastPolicyId || 'unknown_policy';
@@ -1157,16 +1255,16 @@ async function exportBackupsZip() {
   saveAs(blob, filename);
 }
 
-  async function payForCurrentPolicy() {
+async function payForCurrentPolicy() {
   if (!meshWallet) {
     alert('Connect a wallet first.');
     return;
   }
   if (!backupsRequiresPayment || backupsIsHolder) {
-    // nothing to do, holders don't pay here
+    // Nothing to do here; holders don’t pay in this flow
     return;
   }
-  if (!backupsHasScan || !backupsLastRows.length || backupsCurrentFeeAda <= 0) {
+  if (!backupsLastPolicyId || !backupsBaseAssets || backupsCurrentFeeAda <= 0) {
     alert('Scan a policy with assets before paying.');
     return;
   }
@@ -1174,6 +1272,7 @@ async function exportBackupsZip() {
   const feeStatus = document.getElementById('backupsFeeStatus');
   const payBtn    = document.getElementById('backupsPayBtn');
   const zipBtn    = document.getElementById('backupsDownloadZipBtn');
+  const scanStatus = document.getElementById('backupsScanStatus');
 
   try {
     if (feeStatus) {
@@ -1184,6 +1283,7 @@ async function exportBackupsZip() {
       payBtn.disabled = true;
       payBtn.textContent = 'Waiting for wallet…';
     }
+    if (zipBtn) zipBtn.disabled = true;
 
     const tx = new Transaction({ initiator: meshWallet });
 
@@ -1205,16 +1305,21 @@ async function exportBackupsZip() {
 
     if (feeStatus) {
       feeStatus.textContent =
-        `Payment confirmed for policy ${backupsLastPolicyId}.\n` +
-        `Tx: ${txHash}\nYou can now download the BackUps .zip for this policy.`;
-    }
-    if (zipBtn) {
-      zipBtn.disabled = false;
+        `Payment submitted for policy ${backupsLastPolicyId}.\n` +
+        `Tx: ${txHash}\nFetching asset metadata and preparing ZIP…`;
     }
 
-    // TODO (server-side, later):
-    // log wallet + policyId + asset count + txHash
-    // so future visits can re-use this payment if the policy hasn't changed.
+    // Now do the heavy per-asset metadata scan
+    if (scanStatus) {
+      scanStatus.textContent = 'Scanning assets and fetching on-chain metadata…';
+    }
+    await scanMetadataForCurrentPolicy(scanStatus || feeStatus || null);
+    if (scanStatus) {
+      scanStatus.textContent = 'Scan complete.';
+    }
+
+    // renderBackupsResults() was called inside scanMetadataForCurrentPolicy,
+    // so at this point ZIP is unlocked for this policy.
 
   } catch (err) {
     console.error('[BackUps] payForCurrentPolicy error:', err);
@@ -1324,9 +1429,10 @@ async function checkPolicyAssets() {
 
       accessMessage.classList.add('error');
       accessMessage.innerHTML =
-        `You don’t yet meet the free BackUps holder requirements.<br>` +
-        `Pricing for non-holders is <strong>100₳ per 1000 assets</strong> (per policy BackUp).<br>` +
+        `You don’t yet meet the VIP BackUps access requirements.<br>` +
+        `Pricing for non-holders is <strong>10₳ minimum, scaled at 100₳ per 1000 assets</strong> (per policy BackUp).<br>` +
         `Press “Enter BackUps” below to continue and scan a policy.`;
+
 
       payAccessBtn.textContent = 'Enter BackUps';
       payAccessBtn.style.display = 'inline-flex';
