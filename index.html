@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>BackUps by The Refresh</title>
+  <link rel="icon" type="image/png" href="RF5.png">
   <style>
     :root {
       --gap: 1rem;
@@ -868,12 +869,16 @@
 
 <!-- Gated area wrapper (shown only after access granted) -->
 <div id="protectedArea" class="hidden">
+  <!-- Reuse the same logo style in the main app view -->
+  <img src="RF5.png" alt="Fre5h Logo" class="brand-logo">
+
   <div id="backupsContainer" class="loc-container">
     <header class="loc-header">
-<h2 class="loc-title">
-  <span class="backups-logo-text">BackUps</span>
-  <span class="loc-title-accent">by The Refresh</span>
-</h2>
+      <h2 class="loc-title">
+        <span class="backups-logo-text">BackUps</span>
+        <span class="loc-title-accent">by The Refresh</span>
+      </h2>
+
 
 <p class="loc-subtitle">
         One-click policy ID BackUps, wallet or chain-wide.
@@ -2157,6 +2162,7 @@ function runQuotedScanFlow(search) {
   const quoteWarn = document.getElementById('backupsQuoteWarning');
   const scanBtn   = document.getElementById('backupsScanBtn');
 
+  // Reset core BackUps state based on the stored quote
   backupsHasScan              = false;
   backupsLastPolicyId         = search.policyId;
   backupsLastRows             = [];
@@ -2171,7 +2177,7 @@ function runQuotedScanFlow(search) {
 
   if (statusEl) {
     statusEl.textContent =
-      'Using your previous BackUps quote for this policy. No new on-chain scan was performed.';
+      'Reusing your previous BackUps quote for this policy.\nFetching current assets and metadata so the asset list is available…';
   }
 
   if (summary) {
@@ -2195,8 +2201,8 @@ function runQuotedScanFlow(search) {
 
   if (quoteWarn) {
     quoteWarn.textContent =
-      'You can scan one policy one time. This quote is based on the asset count shown above.\n' +
-      'If you do not pay and download today and more assets are minted later, you will need to pay the quoted amount to begin the BackUps process, and will be asked to pay the difference before the ZIP can be downloaded.';
+      'This quote is based on the asset count shown above.\n' +
+      'If more assets are minted after this quote, you may be asked to pay the difference before the ZIP can be downloaded.';
   }
 
   if (payBtn) {
@@ -2208,11 +2214,19 @@ function runQuotedScanFlow(search) {
       payBtn.style.display = 'none';
     }
   }
-    // 🔹 enforce “one scan” when using a stored quote
+
+  // 🔹 Keep the “one quote” behavior, but still load metadata for the asset list
   if (scanBtn) {
     scanBtn.disabled = true;
   }
+
+  // 🔹 NEW: run a metadata scan so "Assets under this policy" modal has rows
+  // This re-fetches assets/metadata, but ZIP download is still gated by payment.
+  scanMetadataForCurrentPolicy(
+    document.getElementById('backupsDownloadStatus') || statusEl || null
+  );
 }
+
 
 
 // ---------------------------------------------------------
