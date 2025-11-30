@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>BackUps by The Refresh</title>
+  <link rel="icon" type="image/png" href="RF5.png">
   <style>
     :root {
       --gap: 1rem;
@@ -284,12 +285,47 @@
       font-weight: 500;
     }
 
-    .loc-main {
-      display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-      gap: 1.25rem;
-      width: 100%;
-    }
+.loc-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  width: 100%;
+  margin-bottom: 1.75rem; /* extra space above thumbnails / next section */
+  align-items: stretch;
+}
+
+/* Baseline for mobile: let cards grow naturally in a single column */
+.loc-main .loc-card {
+  min-height: 260px;
+}
+
+/* Desktop: lock both cards to the same height and keep them from shifting */
+@media (min-width: 801px) {
+  .loc-main {
+    grid-auto-rows: 1fr;
+  }
+
+  .loc-main .loc-column {
+    height: 100%;
+  }
+
+  .loc-main .loc-card {
+    height: 420px;      /* tweak this number to taste (390–450px range works well) */
+    min-height: 420px;
+    overflow: hidden;   /* card itself never grows; inner areas will scroll if needed */
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Any expanding blocks inside the cards get the scroll, not the card height */
+  .loc-main .loc-card .loc-results-details {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+
 
     .loc-column {
       display: flex;
@@ -328,6 +364,18 @@
       padding: 0.55rem 0.7rem;
     }
 
+        /* Fixed visual block for the summary so the card doesn't jump */
+    #backupsResultsSummary {
+      min-height: 3.5em;      /* enough for 2–3 lines of text */
+      display: flex;
+      align-items: flex-start;
+    }
+
+    #backupsResultsSummary > span {
+      display: block;
+    }
+
+
     .loc-btn-primary,
     .loc-btn-secondary {
       border-radius: 999px;
@@ -363,20 +411,23 @@
       opacity: 0.75;
     }
 
-    .loc-tx-status {
-      margin-top: 0.5rem;
-      font-size: 0.8rem;
-      opacity: 0.9;
-      word-break: break-all;
-    }
+.loc-tx-status {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  opacity: 0.9;
+  word-break: normal;        /* don’t break inside words */
+  overflow-wrap: break-word; /* still wrap very long hashes/URLs when needed */
+}
+
     
-    .loc-status-stack {
+.loc-status-stack {
   margin-top: 0.75rem;
   padding-top: 0.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-height: 9.5em; /* reserves space for multi-line fee/scan/quote messages */
 }
 
 /* Make the bottom tracking log a bit more compact & readable */
@@ -490,6 +541,20 @@
 .wallet-filter-details[open] .wallet-filter-summary::before {
   transform: rotate(90deg);
 }
+
+.wallet-select-all {
+  margin-left: auto;                 /* push it to the right side */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.wallet-select-all input {
+  cursor: pointer;
+}
+
 
 .wallet-filters-container {
   margin-top: 0.35rem;
@@ -729,7 +794,74 @@
   margin-top: 0.4rem;
 }
 
+/* BackUps assets modal */
+.backups-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20; /* above gate overlay (z-index:10) */
+}
 
+.backups-modal.hidden {
+  display: none;
+}
+
+.backups-modal-inner {
+  background: rgba(5, 10, 24, 0.98);
+  border-radius: 0.9rem;
+  border: 1px solid rgba(120, 141, 255, 0.3);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85);
+  max-width: 960px;
+  width: 95%;
+  max-height: 80vh;
+  padding: 1rem 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.backups-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.backups-modal-close {
+  border: none;
+  background: rgba(10, 18, 46, 0.95);
+  color: #e4e8ff;
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backups-modal-close:hover {
+  background: rgba(120, 141, 255, 0.9);
+  color: #050814;
+}
+
+.backups-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0.35rem;
+}
+
+/* Let the table use the modal height instead of the smaller card height */
+.backups-modal .table-wrapper {
+  max-height: 100%;
+}
+
+    
     #backupsResultsSummary code {
   font-size: 0.65em; /* roughly half the surrounding text size */
 }
@@ -753,12 +885,16 @@
 
 <!-- Gated area wrapper (shown only after access granted) -->
 <div id="protectedArea" class="hidden">
+  <!-- Reuse the same logo style in the main app view -->
+  <img src="RF5.png" alt="Fre5h Logo" class="brand-logo">
+
   <div id="backupsContainer" class="loc-container">
     <header class="loc-header">
-<h2 class="loc-title">
-  <span class="backups-logo-text">BackUps</span>
-  <span class="loc-title-accent">by The Refresh</span>
-</h2>
+      <h2 class="loc-title">
+        <span class="backups-logo-text">BackUps</span>
+        <span class="loc-title-accent">by The Refresh</span>
+      </h2>
+
 
 <p class="loc-subtitle">
         One-click policy ID BackUps, wallet or chain-wide.
@@ -841,25 +977,14 @@
             <span>No scan yet. Paste a policy ID and press “Scan policy on chain”.</span>
           </div>
 
-<!-- Assets list section (collapsible) -->
-<details id="backupsResultsDetails" class="loc-results-details">
-  <summary class="loc-results-summary">
-    Assets under this policy (click to collapse/expand)
-  </summary>
+<!-- Assets list modal trigger -->
+<button type="button"
+        id="backupsOpenAssetsModalBtn"
+        class="loc-btn-secondary"
+        style="margin-top:0.5rem;">
+  View assets under this policy
+</button>
 
-  <div class="table-wrapper">
-    <table id="backupsResultsTable" class="loc-results-table hidden">
-      <thead>
-        <tr>
-          <th>Asset Name (ASCII)</th>
-          <th>Quantity</th>
-          <th>Full Unit</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-</details>
 
 
 <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem;">
@@ -908,9 +1033,16 @@
       </p>
 
       <details id="walletFilterDetails" class="wallet-filter-details">
-        <summary class="wallet-filter-summary">
-          Filter by metadata properties (optional)
-        </summary>
+  <summary class="wallet-filter-summary">
+    <span>Filter by metadata properties (optional)</span>
+
+    <!-- New: Select all checkbox to the right -->
+    <label class="wallet-select-all">
+      <input type="checkbox" id="walletSelectAllCheckbox" checked>
+      <span>Select all</span>
+    </label>
+  </summary>
+
 
         <div id="walletFiltersContainer" class="wallet-filters-container">
           <!-- Filter groups will be injected here -->
@@ -946,7 +1078,38 @@
   </div>
 </div>
 
-  
+  <!-- Assets list modal -->
+<div id="backupsAssetsModal" class="backups-modal hidden">
+  <div class="backups-modal-inner">
+    <div class="backups-modal-header">
+      <h3 style="margin:0; font-size:0.95rem;">
+        Assets under this policy
+      </h3>
+      <button type="button"
+              id="backupsAssetsModalClose"
+              class="backups-modal-close"
+              aria-label="Close assets list">
+        ×
+      </button>
+    </div>
+
+    <div class="backups-modal-body">
+      <div class="table-wrapper">
+        <table id="backupsResultsTable" class="loc-results-table hidden">
+          <thead>
+            <tr>
+              <th>Asset Name (ASCII)</th>
+              <th>Quantity</th>
+              <th>Full Unit</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- WALLET GATE OVERLAY -->
 <div id="gateOverlay">
@@ -1725,7 +1888,15 @@ function renderWalletAssetsView() {
   const total = walletAssetsAll.length;
   const selectedCount = walletSelectedUnits.size;
 
+  // Sync the "Select all" checkbox with current selection
+  const selectAllCheckbox = document.getElementById('walletSelectAllCheckbox');
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked =
+      total > 0 && selectedCount === total && selectedCount > 0;
+  }
+
   const filteredAssets = walletAssetsAll.filter(matchesWalletFilters);
+
 
   // Render cards
   for (const asset of filteredAssets) {
@@ -1851,7 +2022,7 @@ card.innerHTML = `
   }
 }
 
-
+const BACKUPS_PREVIOUS_SEARCH_KEY = 'backupsPreviousSearches_v1';
 
 async function loadPreviousSearches() {
   if (!userIdentity) return;
@@ -2022,50 +2193,81 @@ function runQuotedScanFlow(search) {
   const quoteWarn = document.getElementById('backupsQuoteWarning');
   const scanBtn   = document.getElementById('backupsScanBtn');
 
-  backupsHasScan              = false;
-  backupsLastPolicyId         = search.policyId;
-  backupsLastRows             = [];
-  backupsLastKeys             = [];
-  backupsBaseAssets           = null;
-  backupsCurrentAssetCount    = search.assetCount;
-  backupsCurrentFeeAda        = search.feeAda;
-  backupsCurrentFeeLovelace   = String(search.feeAda * 1_000_000);
-  backupsPaidForCurrentPolicy = backupsIsHolder; // holders still free
+  // Reset core BackUps state based on the stored quote
+  backupsHasScan            = false;
+  backupsLastPolicyId       = search.policyId;
+  backupsLastRows           = [];
+  backupsLastKeys           = [];
+  backupsBaseAssets         = null;
+  backupsCurrentAssetCount  = search.assetCount;
+  backupsCurrentFeeAda      = search.feeAda;
+  backupsCurrentFeeLovelace = String(search.feeAda * 1_000_000);
 
-  if (zipBtn) zipBtn.disabled = true;
+  // Has this policy already been paid for (non-holder) in a previous session?
+  const alreadyPaidForThisPolicy =
+    !backupsIsHolder &&
+    search.paidFeeAda != null &&
+    search.paidFeeAda > 0 &&
+    !!search.paidTxHash;
 
+  // Holders are always "prepaid", and we also respect any prior per-policy payment.
+  backupsPaidForCurrentPolicy = backupsIsHolder || alreadyPaidForThisPolicy;
+
+  if (zipBtn) {
+    // Holders and previously-paid policies can go straight to "Download",
+    // which will run the metadata scan before building the ZIP.
+    // Everyone else must run a fresh scan + payment first.
+    if (backupsIsHolder || alreadyPaidForThisPolicy) {
+      zipBtn.disabled = false;
+    } else {
+      zipBtn.disabled = true;
+    }
+  }
+
+
+  // ✅ Only restore the quote & UI text – NO new scan here
   if (statusEl) {
     statusEl.textContent =
-      'Using your previous BackUps quote for this policy. No new on-chain scan was performed.';
+      'Reusing your previous BackUps quote for this policy. No new on-chain scan has been run yet.';
   }
 
   if (summary) {
     summary.innerHTML =
-      `<span>Policy <code>${search.policyId}</code> has a quoted total of <strong>${search.assetCount}</strong> asset(s).</span>`;
+      `<span>Policy <code>${search.policyId}</code> has a stored quote for <strong>${search.assetCount}</strong> asset(s).</span>`;
   }
 
   if (feeStatus) {
     if (backupsIsHolder) {
       feeStatus.textContent =
         `You are a Refresh holder (≥ ${ACCESS_POLICIES[0].minAssets}). No BackUps fee for this policy.`;
-    } else if (search.feeAda > 0) {
+    }  else if (search.feeAda > 0) {
       feeStatus.textContent =
-        `Quoted BackUps fee for this policy is ${search.feeAda}₳ (10₳ per 50 assets, minimum 10₳).\n` +
-        `Press “Pay & unlock ZIP” to proceed.`;
+        `Quoted BackUps fee for this policy is ${search.feeAda}₳ (10₳ per 50 assets, minimum 10₳).`;
     } else {
       feeStatus.textContent =
         'No assets under this policy in your previous quote.';
     }
   }
 
+  // 🔹 This is the message you asked for in the viewing/preview area
   if (quoteWarn) {
-    quoteWarn.textContent =
-      'You can scan one policy one time. This quote is based on the asset count shown above.\n' +
-      'If you do not pay and download today and more assets are minted later, you will need to pay the quoted amount to begin the BackUps process, and will be asked to pay the difference before the ZIP can be downloaded.';
+    if (!backupsIsHolder && search.feeAda > 0 && !alreadyPaidForThisPolicy) {
+      quoteWarn.textContent =
+        'You have already run the initial scan for this policy.\n' +
+        'Please pay the quoted fee to obtain the full metadata again and download the BackUps .zip.';
+    } else if (!backupsIsHolder && alreadyPaidForThisPolicy) {
+      quoteWarn.textContent =
+        'This policy has already been paid for.\n' +
+        'Click “Download BackUps .zip” to run a fresh BackUp using your existing payment.\n' +
+        'If you press “Scan policy on chain”, you will generate a new quote and be charged again for a new BackUp.';
+    } else {
+      quoteWarn.textContent = '';
+    }
   }
 
+
   if (payBtn) {
-    if (!backupsIsHolder && search.feeAda > 0) {
+    if (!backupsIsHolder && search.feeAda > 0 && !alreadyPaidForThisPolicy) {
       payBtn.textContent = `Pay ${search.feeAda}₳ & unlock ZIP`;
       payBtn.style.display = 'inline-flex';
       payBtn.disabled = false;
@@ -2073,11 +2275,15 @@ function runQuotedScanFlow(search) {
       payBtn.style.display = 'none';
     }
   }
-    // 🔹 enforce “one scan” when using a stored quote
+
+  // ✅ Important: leave Scan button ENABLED.
+  // Clicking "Scan policy on chain" is now the *only* thing that talks to Blockfrost.
   if (scanBtn) {
-    scanBtn.disabled = true;
+    scanBtn.disabled = false;
   }
 }
+
+
 
 
 // ---------------------------------------------------------
@@ -2345,17 +2551,6 @@ async function backupsScanForPolicy() {
 
   const rawPolicy = (policyEl?.value || '').trim();
 
-  // 🔹 If this policy was already scanned before, reuse the stored quote
-  const existingSearch = backupsPreviousSearches.find(
-    (s) => s.policyId === rawPolicy
-  );
-  if (existingSearch) {
-    runQuotedScanFlow(existingSearch);
-    const scanBtn = document.getElementById('backupsScanBtn');
-    if (scanBtn) scanBtn.disabled = true;
-    return; // ⛔ no new Blockfrost scan for the quote itself
-  }
-
   if (!rawPolicy) {
     if (statusEl) statusEl.textContent = 'Enter a policy ID to scan.';
     return;
@@ -2568,6 +2763,9 @@ async function backupsScanWalletPolicy() {
 
     walletAssetsAll = results;
     backupsLastPolicyId = rawPolicy;
+
+    // New: select all assets by default in wallet mode
+    walletSelectedUnits = new Set(results.map(a => a.unit));
 
     if (summary) {
       summary.innerHTML =
@@ -3465,11 +3663,53 @@ payBtn?.addEventListener('click', payForCurrentPolicy);
     renderWalletAssetsView();
   });
 
+  // New: "Select all" checkbox in the filter header
+  const selectAllCheckbox = document.getElementById('walletSelectAllCheckbox');
+  const selectAllLabel = document.querySelector('.wallet-select-all');
 
-    // Render any previously loaded searches into the UI
+  // Clicking the label shouldn't toggle the <details> open/close
+  selectAllLabel?.addEventListener('click', (evt) => {
+    evt.stopPropagation();
+  });
+
+  // When the checkbox changes, select or deselect all wallet assets
+  selectAllCheckbox?.addEventListener('change', () => {
+    if (!walletAssetsAll.length) return;
+
+    walletSelectedUnits = new Set();
+    if (selectAllCheckbox.checked) {
+      walletAssetsAll.forEach(a => walletSelectedUnits.add(a.unit));
+    }
+    renderWalletAssetsView();
+  });
+
+  
+// Assets modal open/close
+  const assetsModal        = document.getElementById('backupsAssetsModal');
+  const assetsModalOpenBtn = document.getElementById('backupsOpenAssetsModalBtn');
+  const assetsModalCloseBtn = document.getElementById('backupsAssetsModalClose');
+
+  if (assetsModal && assetsModalOpenBtn) {
+    assetsModalOpenBtn.addEventListener('click', () => {
+      assetsModal.classList.remove('hidden');
+    });
+
+    // Click on backdrop closes the modal
+    assetsModal.addEventListener('click', (evt) => {
+      if (evt.target === assetsModal) {
+        assetsModal.classList.add('hidden');
+      }
+    });
+
+    assetsModalCloseBtn?.addEventListener('click', () => {
+      assetsModal.classList.add('hidden');
+    });
+  }
+
+  // Render any previously loaded searches into the UI
   renderPreviousSearches();
   
-    const policyInput = document.getElementById('backupsPolicyInput');
+  const policyInput = document.getElementById('backupsPolicyInput');
 
   function handlePolicyInputChange() {
     if (!policyInput || !scanBtn) return;
@@ -3492,17 +3732,42 @@ payBtn?.addEventListener('click', payForCurrentPolicy);
 
     if (existing) {
       runQuotedScanFlow(existing);
-      scanBtn.disabled = true;
+      // Leave Scan enabled – user can tap it if they explicitly
+      // want a brand new paid BackUp.
+      scanBtn.disabled = false;
     } else {
       scanBtn.disabled = false;
     }
-  }
 
+}
 
   policyInput?.addEventListener('input', handlePolicyInputChange);
   policyInput?.addEventListener('blur', handlePolicyInputChange);
 
+  // Click-to-paste policy ID from clipboard
+if (policyInput && navigator.clipboard && navigator.clipboard.readText) {
+  policyInput.addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) return; // nothing on clipboard
+      policyInput.value = text.trim();
+      handlePolicyInputChange();
+    } catch (err) {
+      console.warn('[BackUps] clipboard paste failed:', err);
+    }
+  });
+} else {
+  // Clipboard API not available – optional hint:
+  if (policyInput) {
+    const hint = document.createElement('div');
+    hint.className = 'clipboard-hint';
+    hint.textContent = 'Tip: long-press or use Paste to enter your policy ID from the clipboard.';
+    policyInput.parentNode.appendChild(hint);
+  }
 }
+
+} // end of initLocApp
+
 
 async function checkPolicyAssets() {
   if (!meshWallet) return;
