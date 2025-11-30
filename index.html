@@ -2427,63 +2427,32 @@ function csvEscape(value) {
   return str;
 }
 
-// Normalize metadata values so hex-like nested structures become human-readable
+// Normalize metadata values so hex-like strings become human-readable text,
+// but keep structure (objects/arrays) and do NOT touch normal strings like URLs.
 function normalizeMetadataValue(value) {
-  // Strings: handle hex / CBOR / JSON / URLs generically,
-  // *not* tied to any specific key like "socials".
+  // 1) Strings: only decode *pure hex* that looks like ASCII
   if (typeof value === 'string') {
-    const isHex = /^[0-9a-fA-F]+$/.test(value) && value.length % 2 === 0;
-
-    if (isHex) {
-      // 1) Try to interpret as CBOR (e.g. socials map, nested JSON stored as bytes)
-      const cborVal = tryDecodeCborHex(value);
-      if (cborVal !== null && cborVal !== undefined) {
-        // Recursively normalize whatever CBOR gave us
-        return normalizeMetadataValue(cborVal);
-      }
-
-      // 2) Fallback: treat as hex → text, maybe JSON / URLs / plain text
+    // Only hex chars, even length
+    if (/^[0-9a-fA-F]+$/.test(value) && value.length % 2 === 0) {
       const decoded = hexToAscii(value);
-      if (decoded) {
-        const trimmed = decoded.trim();
 
-        // 2a) If the decoded text is JSON, parse it into real nested objects/arrays
-        if (
-          (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-          (trimmed.startsWith('[') && trimmed.endsWith(']'))
-        ) {
-          try {
-            const jsonVal = JSON.parse(trimmed);
-            return normalizeMetadataValue(jsonVal);
-          } catch {
-            // If JSON.parse fails, fall through to plain text handling
-          }
-        }
-
-        // 2b) If it clearly contains URLs, strip control chars and return the readable text
-        if (/\bhttps?:\/\//.test(decoded)) {
-          // Remove control characters but keep everything else
-          const cleaned = decoded.replace(/[\x00-\x1F\x7F]/g, '');
-          return cleaned;
-        }
-
-        // 2c) Plain printable ASCII → use as-is
-        if (/^[\x20-\x7E]+$/.test(decoded)) {
-          return decoded;
-        }
+      // Only accept if the decoded result is printable ASCII (space–~)
+      // This avoids trashing things like URLs or random binary-looking data.
+      if (decoded && /^[\x20-\x7E]+$/.test(decoded)) {
+        return decoded;
       }
     }
 
-    // Non-hex strings or ones we can’t safely decode are returned unchanged
+    // Normal strings (URLs, text, etc) pass through unchanged
     return value;
   }
 
-  // Arrays: normalize each element (so nested arrays of JSON/CBOR also get cleaned up)
+  // 2) Arrays: normalize each element recursively
   if (Array.isArray(value)) {
     return value.map(normalizeMetadataValue);
   }
 
-  // Objects: normalize each property recursively
+  // 3) Objects: normalize each property recursively
   if (value && typeof value === 'object') {
     const out = {};
     for (const k in value) {
@@ -2494,9 +2463,10 @@ function normalizeMetadataValue(value) {
     return out;
   }
 
-  // Numbers, booleans, null, etc. unchanged
+  // 4) Numbers, booleans, null, etc – leave as-is
   return value;
 }
+
 
 
 
