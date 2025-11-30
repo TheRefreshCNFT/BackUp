@@ -289,7 +289,14 @@
       grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
       gap: 1.25rem;
       width: 100%;
+      margin-bottom: 1.75rem; /* extra space above thumbnails / next section */
     }
+
+    /* Keep both cards in the grid the same, stable height */
+    .loc-main .loc-card {
+      min-height: 260px; /* adjust up/down if you want more/less breathing room */
+    }
+
 
     .loc-column {
       display: flex;
@@ -327,6 +334,18 @@
       border-radius: 0.6rem;
       padding: 0.55rem 0.7rem;
     }
+
+        /* Fixed visual block for the summary so the card doesn't jump */
+    #backupsResultsSummary {
+      min-height: 3.5em;      /* enough for 2–3 lines of text */
+      display: flex;
+      align-items: flex-start;
+    }
+
+    #backupsResultsSummary > span {
+      display: block;
+    }
+
 
     .loc-btn-primary,
     .loc-btn-secondary {
@@ -370,13 +389,14 @@
       word-break: break-all;
     }
     
-    .loc-status-stack {
+.loc-status-stack {
   margin-top: 0.75rem;
   padding-top: 0.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-height: 7.5em; /* reserves space for multi-line fee/scan/quote messages */
 }
 
 /* Make the bottom tracking log a bit more compact & readable */
