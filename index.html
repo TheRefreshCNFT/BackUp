@@ -1282,6 +1282,11 @@ function cborReadArg(addInfo, bytes, offset) {
   throw new Error('CBOR: unsupported additional info ' + addInfo);
 }
 
+  function isPrintableAscii(str) {
+  return /^[\x20-\x7E]*$/.test(str);
+}
+
+
 function decodeCborItem(bytes, offset) {
   if (offset >= bytes.length) {
     throw new Error('CBOR: unexpected end of data');
@@ -1308,8 +1313,23 @@ function decodeCborItem(bytes, offset) {
         throw new Error('CBOR: truncated byte string');
       }
       const buf = bytes.slice(off2, off2 + len);
+
+      // Try to decode as UTF-8 text. If it's clean printable ASCII, treat it as a string.
+      if (_utf8Decoder) {
+        try {
+          const text = _utf8Decoder.decode(buf);
+          if (isPrintableAscii(text)) {
+            return { value: text, offset: off2 + len };
+          }
+        } catch (e) {
+          // fall through to raw bytes
+        }
+      }
+
+      // Otherwise keep as Uint8Array (binary data)
       return { value: buf, offset: off2 + len };
     }
+
 
     case 3: { // text string
       const { value: len, offset: off2 } = cborReadArg(addInfo, bytes, offset);
@@ -2583,6 +2603,37 @@ function csvEscape(value) {
 // decoded CBOR objects, but keep structure (objects/arrays) and do NOT touch
 // normal strings like URLs.
 function normalizeMetadataValue(value) {
+  // 0) Typed arrays (from CBOR) → try to decode as UTF-8 text, else hex string
+  if (
+    value &&
+    typeof value === 'object' &&
+    (value instanceof Uint8Array ||
+      (ArrayBuffer.isView(value) && !(value instanceof DataView)))
+  ) {
+    // Turn into a plain Uint8Array for safety
+    const u8 = value instanceof Uint8Array ? value : new Uint8Array(value.buffer.slice(0));
+
+    let asText = '';
+    if (_utf8Decoder) {
+      try {
+        asText = _utf8Decoder.decode(u8);
+        if (isPrintableAscii(asText)) {
+          return asText;
+        }
+      } catch (e) {
+        asText = '';
+      }
+    }
+
+    // Fallback: hex string so it’s at least compact, not {0: 104, 1: 116, …}
+    let hex = '';
+    for (let i = 0; i < u8.length; i++) {
+      const h = u8[i].toString(16).padStart(2, '0');
+      hex += h;
+    }
+    return hex;
+  }
+
   // 1) Strings: only touch pure hex
   if (typeof value === 'string') {
     const isHex = /^[0-9a-fA-F]+$/.test(value) && value.length % 2 === 0;
@@ -2590,7 +2641,7 @@ function normalizeMetadataValue(value) {
     if (isHex) {
       // 1a) First try plain hex → ASCII (for things like hex-encoded names)
       const ascii = hexToAscii(value);
-      if (ascii && /^[\x20-\x7E]+$/.test(ascii)) {
+      if (ascii && isPrintableAscii(ascii)) {
         // Printable ASCII only
         return ascii;
       }
@@ -2615,17 +2666,34 @@ function normalizeMetadataValue(value) {
   // 3) Objects: normalize each property recursively
   if (value && typeof value === 'object') {
     const out = {};
+
     for (const k in value) {
-      if (Object.prototype.hasOwnProperty.call(value, k)) {
-        out[k] = normalizeMetadataValue(value[k]);
+      if (!Object.prototype.hasOwnProperty.call(value, k)) continue;
+
+      let newKey = k;
+
+      // Special case: CBOR maps that encoded keys as "119,101,98,115,105,116,101"
+      // → interpret as ASCII codes if they look like that.
+      if (/^\d+(,\d+)+$/.test(k)) {
+        const codes = k.split(',').map((n) => parseInt(n, 10));
+        if (codes.every((n) => Number.isFinite(n) && n >= 0 && n <= 255)) {
+          const maybeStr = String.fromCharCode(...codes);
+          if (isPrintableAscii(maybeStr)) {
+            newKey = maybeStr;
+          }
+        }
       }
+
+      out[newKey] = normalizeMetadataValue(value[k]);
     }
+
     return out;
   }
 
   // 4) Numbers, booleans, null, etc – leave as-is
   return value;
 }
+
 
 
 function downloadReceiptForSearch(s) {
