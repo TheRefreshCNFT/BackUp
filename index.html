@@ -2629,14 +2629,19 @@ async function exportBackupsZip() {
         continue;
       }
 
-      if (!finalUrl) continue;
+  if (!finalUrl) continue;
 
-      const safeName =
-        row.assetName && /^[a-z0-9_\-]+$/i.test(row.assetName)
-          ? row.assetName
-          : row.unit;
+  // Use the asset name for the image filename, sanitized.
+  // Fall back to unit only if there is no assetName at all.
+  let safeName = (row.assetName && row.assetName.trim())
+    ? row.assetName.trim()
+    : row.unit;
 
-      imageTasks.push({ finalUrl, safeName, expectedBytes: null });
+  // Replace any character that isn't A–Z, 0–9, _ or - with "_"
+  safeName = safeName.replace(/[^a-z0-9_\-]/gi, '_');
+
+  imageTasks.push({ finalUrl, safeName, expectedBytes: null });
+
     }
 
     const totalImages = imageTasks.length;
