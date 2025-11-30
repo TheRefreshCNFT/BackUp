@@ -1431,8 +1431,8 @@ async function logPaidAccess(txHash) {
 // ---------------------------------------------------------
 // Small helpers
 // ---------------------------------------------------------
-      var isAndroid = 
-      var isIOS = 
+      var isAndroid = /Android/i.test(navigator.userAgent);
+      var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
       // Hide ZIP download button on mobile (Android + iOS)
       if (isAndroid || isIOS) {
