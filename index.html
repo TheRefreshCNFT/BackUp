@@ -2237,12 +2237,6 @@ function runQuotedScanFlow(search) {
       `<span>Policy <code>${search.policyId}</code> has a quoted total of <strong>${search.assetCount}</strong> asset(s).</span>`;
   }
 
-  const alreadyPaidForThisPolicy =
-    !backupsIsHolder &&
-    search.paidFeeAda != null &&
-    search.paidFeeAda > 0 &&
-    !!search.paidTxHash;
-
   if (feeStatus) {
     if (backupsIsHolder) {
       feeStatus.textContent =
