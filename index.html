@@ -284,18 +284,46 @@
       font-weight: 500;
     }
 
-    .loc-main {
-      display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-      gap: 1.25rem;
-      width: 100%;
-      margin-bottom: 1.75rem; /* extra space above thumbnails / next section */
-    }
+.loc-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  width: 100%;
+  margin-bottom: 1.75rem; /* extra space above thumbnails / next section */
+  align-items: stretch;
+}
 
-    /* Keep both cards in the grid the same, stable height */
-    .loc-main .loc-card {
-      min-height: 260px; /* adjust up/down if you want more/less breathing room */
-    }
+/* Baseline for mobile: let cards grow naturally in a single column */
+.loc-main .loc-card {
+  min-height: 260px;
+}
+
+/* Desktop: lock both cards to the same height and keep them from shifting */
+@media (min-width: 801px) {
+  .loc-main {
+    grid-auto-rows: 1fr;
+  }
+
+  .loc-main .loc-column {
+    height: 100%;
+  }
+
+  .loc-main .loc-card {
+    height: 420px;      /* tweak this number to taste (390–450px range works well) */
+    min-height: 420px;
+    overflow: hidden;   /* card itself never grows; inner areas will scroll if needed */
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Any expanding blocks inside the cards get the scroll, not the card height */
+  .loc-main .loc-card .loc-results-details {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
 
 
     .loc-column {
