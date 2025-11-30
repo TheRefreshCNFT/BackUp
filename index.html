@@ -3728,19 +3728,26 @@ payBtn?.addEventListener('click', payForCurrentPolicy);
   policyInput?.addEventListener('blur', handlePolicyInputChange);
 
   // Click-to-paste policy ID from clipboard
-  if (policyInput && navigator.clipboard && navigator.clipboard.readText) {
-    policyInput.addEventListener('click', async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        if (!text) return; // nothing on clipboard
-        policyInput.value = text.trim();
-        handlePolicyInputChange(); // re-run quote / one-scan logic
-      } catch (err) {
-        console.warn('[BackUps] clipboard paste failed:', err);
-        // fail silently: user can still paste manually
-      }
-    });
+if (policyInput && navigator.clipboard && navigator.clipboard.readText) {
+  policyInput.addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) return; // nothing on clipboard
+      policyInput.value = text.trim();
+      handlePolicyInputChange();
+    } catch (err) {
+      console.warn('[BackUps] clipboard paste failed:', err);
+    }
+  });
+} else {
+  // Clipboard API not available – optional hint:
+  if (policyInput) {
+    const hint = document.createElement('div');
+    hint.className = 'clipboard-hint';
+    hint.textContent = 'Tip: long-press or use Paste to enter your policy ID from the clipboard.';
+    policyInput.parentNode.appendChild(hint);
   }
+}
 
 } // end of initLocApp
 
