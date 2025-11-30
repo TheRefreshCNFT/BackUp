@@ -777,7 +777,74 @@
   margin-top: 0.4rem;
 }
 
+/* BackUps assets modal */
+.backups-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20; /* above gate overlay (z-index:10) */
+}
 
+.backups-modal.hidden {
+  display: none;
+}
+
+.backups-modal-inner {
+  background: rgba(5, 10, 24, 0.98);
+  border-radius: 0.9rem;
+  border: 1px solid rgba(120, 141, 255, 0.3);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85);
+  max-width: 960px;
+  width: 95%;
+  max-height: 80vh;
+  padding: 1rem 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.backups-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.backups-modal-close {
+  border: none;
+  background: rgba(10, 18, 46, 0.95);
+  color: #e4e8ff;
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backups-modal-close:hover {
+  background: rgba(120, 141, 255, 0.9);
+  color: #050814;
+}
+
+.backups-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0.35rem;
+}
+
+/* Let the table use the modal height instead of the smaller card height */
+.backups-modal .table-wrapper {
+  max-height: 100%;
+}
+
+    
     #backupsResultsSummary code {
   font-size: 0.65em; /* roughly half the surrounding text size */
 }
@@ -889,25 +956,14 @@
             <span>No scan yet. Paste a policy ID and press “Scan policy on chain”.</span>
           </div>
 
-<!-- Assets list section (collapsible) -->
-<details id="backupsResultsDetails" class="loc-results-details">
-  <summary class="loc-results-summary">
-    Assets under this policy (click to collapse/expand)
-  </summary>
+<!-- Assets list modal trigger -->
+<button type="button"
+        id="backupsOpenAssetsModalBtn"
+        class="loc-btn-secondary"
+        style="margin-top:0.5rem;">
+  View assets under this policy
+</button>
 
-  <div class="table-wrapper">
-    <table id="backupsResultsTable" class="loc-results-table hidden">
-      <thead>
-        <tr>
-          <th>Asset Name (ASCII)</th>
-          <th>Quantity</th>
-          <th>Full Unit</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-</details>
 
 
 <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem;">
@@ -994,7 +1050,38 @@
   </div>
 </div>
 
-  
+  <!-- Assets list modal -->
+<div id="backupsAssetsModal" class="backups-modal hidden">
+  <div class="backups-modal-inner">
+    <div class="backups-modal-header">
+      <h3 style="margin:0; font-size:0.95rem;">
+        Assets under this policy
+      </h3>
+      <button type="button"
+              id="backupsAssetsModalClose"
+              class="backups-modal-close"
+              aria-label="Close assets list">
+        ×
+      </button>
+    </div>
+
+    <div class="backups-modal-body">
+      <div class="table-wrapper">
+        <table id="backupsResultsTable" class="loc-results-table hidden">
+          <thead>
+            <tr>
+              <th>Asset Name (ASCII)</th>
+              <th>Quantity</th>
+              <th>Full Unit</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- WALLET GATE OVERLAY -->
 <div id="gateOverlay">
@@ -3514,10 +3601,32 @@ payBtn?.addEventListener('click', payForCurrentPolicy);
   });
 
 
-    // Render any previously loaded searches into the UI
+// Assets modal open/close
+  const assetsModal        = document.getElementById('backupsAssetsModal');
+  const assetsModalOpenBtn = document.getElementById('backupsOpenAssetsModalBtn');
+  const assetsModalCloseBtn = document.getElementById('backupsAssetsModalClose');
+
+  if (assetsModal && assetsModalOpenBtn) {
+    assetsModalOpenBtn.addEventListener('click', () => {
+      assetsModal.classList.remove('hidden');
+    });
+
+    // Click on backdrop closes the modal
+    assetsModal.addEventListener('click', (evt) => {
+      if (evt.target === assetsModal) {
+        assetsModal.classList.add('hidden');
+      }
+    });
+
+    assetsModalCloseBtn?.addEventListener('click', () => {
+      assetsModal.classList.add('hidden');
+    });
+  }
+
+  // Render any previously loaded searches into the UI
   renderPreviousSearches();
   
-    const policyInput = document.getElementById('backupsPolicyInput');
+  const policyInput = document.getElementById('backupsPolicyInput');
 
   function handlePolicyInputChange() {
     if (!policyInput || !scanBtn) return;
@@ -3550,7 +3659,23 @@ payBtn?.addEventListener('click', payForCurrentPolicy);
   policyInput?.addEventListener('input', handlePolicyInputChange);
   policyInput?.addEventListener('blur', handlePolicyInputChange);
 
-}
+  // Click-to-paste policy ID from clipboard
+  if (policyInput && navigator.clipboard && navigator.clipboard.readText) {
+    policyInput.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (!text) return; // nothing on clipboard
+        policyInput.value = text.trim();
+        handlePolicyInputChange(); // re-run quote / one-scan logic
+      } catch (err) {
+        console.warn('[BackUps] clipboard paste failed:', err);
+        // fail silently: user can still paste manually
+      }
+    });
+  }
+
+} // end of initLocApp
+
 
 async function checkPolicyAssets() {
   if (!meshWallet) return;
