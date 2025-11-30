@@ -543,7 +543,7 @@
 }
 
 .wallet-asset-card {
-  width: 150px;
+  width: 135px;
   border-radius: 0.6rem;
   border: 1px solid rgba(120, 141, 255, 0.35);
   background: rgba(7, 12, 30, 0.95);
@@ -593,7 +593,7 @@
 
 .wallet-asset-props {
   margin-top: 0.1rem;
-  max-height: 4.1em;
+  max-height: 6em;
   overflow: hidden;
   font-size: 0.7rem;
 }
@@ -752,9 +752,10 @@
   <span class="loc-title-accent">by The Refresh</span>
 </h2>
 
-      <p class="loc-subtitle">
-        One-click backup of all assets under a policy ID. No wallet scan, chain-wide view.
+<p class="loc-subtitle">
+        One-click policy ID BackUps, wallet or chain-wide.
       </p>
+
 
 <div class="loc-substeps">
   <ul>
@@ -805,17 +806,20 @@
 </button>
 
 
-<p class="loc-hint">
+<p id="backupsHint" class="loc-hint">
   BackUps queries Blockfrost for all assets under this policy and grabs every
   on-chain metadata property it finds. No wallet contents are scanned for this step.
 </p>
 
-<div id="backupsPreviousSearches" class="loc-field">
-  <span>Previous Searches</span>
+
+<details id="backupsPreviousSearches" class="loc-results-details">
+  <summary class="loc-results-summary">
+    Scan History &amp; Receipts (click to collapse/expand)
+  </summary>
   <div id="backupsPrevList" class="loc-hint">
     No previous searches yet.
   </div>
-</div>
+</details>
 
 
         </div>
@@ -969,12 +973,13 @@
 <div class="access-steps">
   <h3 class="gate-subtitle">How BackUps works</h3>
   <ul class="gate-list">
-    <li>Connect a Cardano wallet to determine your access type.</li>
-    <li>Enter the policy ID you want to scan.</li>
-    <li>Pay the BackUps fee if you’re not a Refresh Whale.</li>
-    <li>Once the transaction confirms, downloads are enabled.</li>
+    <li>Select <strong>Blockchain</strong> or <strong>Connected Wallet</strong>.</li>
+    <li>Paste the policy ID you want to BackUp.</li>
+    <li>Review the quoted fee and pay if you’re not a Refresh Whale.</li>
+    <li>Once the payment is confirmed, BackUps downloads are unlocked.</li>
   </ul>
 </div>
+
 
 <div class="access-steps">
   <h3 class="gate-subtitle">BackUps download includes</h3>
@@ -1364,6 +1369,7 @@ function buildWalletFiltersUI() {
   const tbody           = table?.querySelector('tbody');
   const payBtn          = document.getElementById('backupsPayBtn');
   const zipBtn          = document.getElementById('backupsDownloadZipBtn');
+  const hint            = document.getElementById('backupsHint');
 
   // Reset shared BackUps state
   backupsHasScan = false;
@@ -1420,6 +1426,18 @@ function buildWalletFiltersUI() {
     walletSummary.textContent =
       'No wallet scan yet. Select “Connected Wallet”, enter a policy ID, and run a scan.';
   }
+
+    if (hint) {
+    if (backupsMode === 'wallet') {
+      hint.textContent =
+        'BackUps scans your connected wallet for assets under this policy and fetches their on-chain metadata. Your wallet contents are scanned for this step.';
+    } else {
+      hint.textContent =
+        'BackUps queries Blockfrost for all assets under this policy and grabs every on-chain metadata property it finds. No wallet contents are scanned for this step.';
+    }
+  }
+}
+
 }
 
 function renderWalletAssetsView() {
