@@ -1243,6 +1243,158 @@ function hexToAscii(hex) {
   return str;
 }
 
+// Minimal CBOR decoder for hex-encoded CBOR (maps/arrays/text/booleans/null).
+// This is enough for things like the "socials" field.
+const _utf8Decoder = (typeof TextDecoder !== 'undefined')
+  ? new TextDecoder('utf-8')
+  : null;
+
+function cborReadUint(bytes, offset, nBytes) {
+  if (offset + nBytes > bytes.length) {
+    throw new Error('CBOR: truncated uint');
+  }
+  let val = 0;
+  for (let i = 0; i < nBytes; i++) {
+    val = (val << 8) | bytes[offset + i];
+  }
+  return { value: val, offset: offset + nBytes };
+}
+
+function cborReadArg(addInfo, bytes, offset) {
+  if (addInfo < 24) {
+    return { value: addInfo, offset };
+  }
+  if (addInfo === 24) {
+    return cborReadUint(bytes, offset, 1);
+  }
+  if (addInfo === 25) {
+    return cborReadUint(bytes, offset, 2);
+  }
+  if (addInfo === 26) {
+    return cborReadUint(bytes, offset, 4);
+  }
+  if (addInfo === 27) {
+    return cborReadUint(bytes, offset, 8);
+  }
+  if (addInfo === 31) {
+    throw new Error('CBOR: indefinite-length not supported');
+  }
+  throw new Error('CBOR: unsupported additional info ' + addInfo);
+}
+
+function decodeCborItem(bytes, offset) {
+  if (offset >= bytes.length) {
+    throw new Error('CBOR: unexpected end of data');
+  }
+
+  const initial = bytes[offset++];
+  const major   = initial >> 5;
+  const addInfo = initial & 0x1f;
+
+  switch (major) {
+    case 0: { // unsigned int
+      const { value, offset: off2 } = cborReadArg(addInfo, bytes, offset);
+      return { value, offset: off2 };
+    }
+
+    case 1: { // negative int
+      const { value, offset: off2 } = cborReadArg(addInfo, bytes, offset);
+      return { value: -1 - value, offset: off2 };
+    }
+
+    case 2: { // byte string
+      const { value: len, offset: off2 } = cborReadArg(addInfo, bytes, offset);
+      if (off2 + len > bytes.length) {
+        throw new Error('CBOR: truncated byte string');
+      }
+      const buf = bytes.slice(off2, off2 + len);
+      return { value: buf, offset: off2 + len };
+    }
+
+    case 3: { // text string
+      const { value: len, offset: off2 } = cborReadArg(addInfo, bytes, offset);
+      if (off2 + len > bytes.length) {
+        throw new Error('CBOR: truncated text string');
+      }
+      const buf = bytes.slice(off2, off2 + len);
+      let str;
+      if (_utf8Decoder) {
+        str = _utf8Decoder.decode(buf);
+      } else {
+        // very basic fallback
+        str = Array.from(buf).map(ch => String.fromCharCode(ch)).join('');
+      }
+      return { value: str, offset: off2 + len };
+    }
+
+    case 4: { // array
+      const { value: len, offset: off2 } = cborReadArg(addInfo, bytes, offset);
+      const arr = [];
+      let cur = off2;
+      for (let i = 0; i < len; i++) {
+        const item = decodeCborItem(bytes, cur);
+        arr.push(item.value);
+        cur = item.offset;
+      }
+      return { value: arr, offset: cur };
+    }
+
+    case 5: { // map
+      const { value: len, offset: off2 } = cborReadArg(addInfo, bytes, offset);
+      const obj = {};
+      let cur = off2;
+      for (let i = 0; i < len; i++) {
+        const kItem = decodeCborItem(bytes, cur);
+        cur = kItem.offset;
+        const vItem = decodeCborItem(bytes, cur);
+        cur = vItem.offset;
+        const key = (typeof kItem.value === 'string')
+          ? kItem.value
+          : String(kItem.value);
+        obj[key] = vItem.value;
+      }
+      return { value: obj, offset: cur };
+    }
+
+    case 6: { // tag – ignore tag, decode inner value
+      const { value: _tag, offset: off2 } = cborReadArg(addInfo, bytes, offset);
+      const inner = decodeCborItem(bytes, off2);
+      return { value: inner.value, offset: inner.offset };
+    }
+
+    case 7: { // simple/float – handle only common constants
+      if (addInfo === 20) return { value: false, offset };
+      if (addInfo === 21) return { value: true, offset };
+      if (addInfo === 22) return { value: null, offset };
+      if (addInfo === 23) return { value: undefined, offset };
+      throw new Error('CBOR: unsupported simple/float');
+    }
+
+    default:
+      throw new Error('CBOR: unsupported major type ' + major);
+  }
+}
+
+function tryDecodeCborHex(hex) {
+  if (!hex || typeof hex !== 'string') return null;
+  if (!/^[0-9a-fA-F]+$/.test(hex) || hex.length % 2 !== 0) return null;
+
+  try {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < bytes.length; i++) {
+      const b = parseInt(hex.substr(i * 2, 2), 16);
+      if (Number.isNaN(b)) return null;
+      bytes[i] = b;
+    }
+    const { value } = decodeCborItem(bytes, 0);
+    return value;
+  } catch (e) {
+    console.warn('[BackUps] CBOR decode failed, leaving as hex:', e);
+    return null;
+  }
+}
+
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -2427,27 +2579,35 @@ function csvEscape(value) {
   return str;
 }
 
-// Normalize metadata values so hex-like strings become human-readable text,
-// but keep structure (objects/arrays) and do NOT touch normal strings like URLs.
+// Normalize metadata values so hex-like strings become human-readable text or
+// decoded CBOR objects, but keep structure (objects/arrays) and do NOT touch
+// normal strings like URLs.
 function normalizeMetadataValue(value) {
-  // 1) Strings: only decode *pure hex* that looks like ASCII
+  // 1) Strings: only touch pure hex
   if (typeof value === 'string') {
-    // Only hex chars, even length
-    if (/^[0-9a-fA-F]+$/.test(value) && value.length % 2 === 0) {
-      const decoded = hexToAscii(value);
+    const isHex = /^[0-9a-fA-F]+$/.test(value) && value.length % 2 === 0;
 
-      // Only accept if the decoded result is printable ASCII (space–~)
-      // This avoids trashing things like URLs or random binary-looking data.
-      if (decoded && /^[\x20-\x7E]+$/.test(decoded)) {
-        return decoded;
+    if (isHex) {
+      // 1a) First try plain hex → ASCII (for things like hex-encoded names)
+      const ascii = hexToAscii(value);
+      if (ascii && /^[\x20-\x7E]+$/.test(ascii)) {
+        // Printable ASCII only
+        return ascii;
+      }
+
+      // 1b) If that fails, try CBOR decode (for nested JSON like socials)
+      const cborVal = tryDecodeCborHex(value);
+      if (cborVal !== null && cborVal !== undefined) {
+        // Run normalization on the decoded structure too
+        return normalizeMetadataValue(cborVal);
       }
     }
 
-    // Normal strings (URLs, text, etc) pass through unchanged
+    // Non-hex or un-decodable hex – leave as-is (URLs, normal text, etc.)
     return value;
   }
 
-  // 2) Arrays: normalize each element recursively
+  // 2) Arrays: normalize elements recursively
   if (Array.isArray(value)) {
     return value.map(normalizeMetadataValue);
   }
@@ -2466,8 +2626,6 @@ function normalizeMetadataValue(value) {
   // 4) Numbers, booleans, null, etc – leave as-is
   return value;
 }
-
-
 
 
 function downloadReceiptForSearch(s) {
