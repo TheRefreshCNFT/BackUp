@@ -542,6 +542,20 @@
   transform: rotate(90deg);
 }
 
+.wallet-select-all {
+  margin-left: auto;                 /* push it to the right side */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.wallet-select-all input {
+  cursor: pointer;
+}
+
+
 .wallet-filters-container {
   margin-top: 0.35rem;
   max-height: 190px;
@@ -1019,9 +1033,16 @@
       </p>
 
       <details id="walletFilterDetails" class="wallet-filter-details">
-        <summary class="wallet-filter-summary">
-          Filter by metadata properties (optional)
-        </summary>
+  <summary class="wallet-filter-summary">
+    <span>Filter by metadata properties (optional)</span>
+
+    <!-- New: Select all checkbox to the right -->
+    <label class="wallet-select-all">
+      <input type="checkbox" id="walletSelectAllCheckbox" checked>
+      <span>Select all</span>
+    </label>
+  </summary>
+
 
         <div id="walletFiltersContainer" class="wallet-filters-container">
           <!-- Filter groups will be injected here -->
@@ -1867,7 +1888,15 @@ function renderWalletAssetsView() {
   const total = walletAssetsAll.length;
   const selectedCount = walletSelectedUnits.size;
 
+  // Sync the "Select all" checkbox with current selection
+  const selectAllCheckbox = document.getElementById('walletSelectAllCheckbox');
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked =
+      total > 0 && selectedCount === total && selectedCount > 0;
+  }
+
   const filteredAssets = walletAssetsAll.filter(matchesWalletFilters);
+
 
   // Render cards
   for (const asset of filteredAssets) {
@@ -2719,6 +2748,9 @@ async function backupsScanWalletPolicy() {
 
     walletAssetsAll = results;
     backupsLastPolicyId = rawPolicy;
+
+    // New: select all assets by default in wallet mode
+    walletSelectedUnits = new Set(results.map(a => a.unit));
 
     if (summary) {
       summary.innerHTML =
@@ -3616,7 +3648,27 @@ payBtn?.addEventListener('click', payForCurrentPolicy);
     renderWalletAssetsView();
   });
 
+  // New: "Select all" checkbox in the filter header
+  const selectAllCheckbox = document.getElementById('walletSelectAllCheckbox');
+  const selectAllLabel = document.querySelector('.wallet-select-all');
 
+  // Clicking the label shouldn't toggle the <details> open/close
+  selectAllLabel?.addEventListener('click', (evt) => {
+    evt.stopPropagation();
+  });
+
+  // When the checkbox changes, select or deselect all wallet assets
+  selectAllCheckbox?.addEventListener('change', () => {
+    if (!walletAssetsAll.length) return;
+
+    walletSelectedUnits = new Set();
+    if (selectAllCheckbox.checked) {
+      walletAssetsAll.forEach(a => walletSelectedUnits.add(a.unit));
+    }
+    renderWalletAssetsView();
+  });
+
+  
 // Assets modal open/close
   const assetsModal        = document.getElementById('backupsAssetsModal');
   const assetsModalOpenBtn = document.getElementById('backupsOpenAssetsModalBtn');
