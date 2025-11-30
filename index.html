@@ -1243,6 +1243,17 @@ const ACCESS_POLICIES = [
   }
 ];
 
+  // =========================================================
+// Simple detection for mobile wallet in-app browsers
+// (best-effort: mobile + wallet name in UA)
+// =========================================================
+const _ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(_ua);
+const isInWalletBrowser =
+  isMobileDevice &&
+  /eternl|lace|typhon|nami|flint|yoroi|vespr|gerowallet|begin/i.test(_ua.toLowerCase());
+
+
 // mesh / identity state
 let meshWallet, userAddress, userIdentity;
 let locPassDaysLeft = null;
@@ -2194,17 +2205,27 @@ function runQuotedScanFlow(search) {
   const scanBtn   = document.getElementById('backupsScanBtn');
 
   // Reset core BackUps state based on the stored quote
-  backupsHasScan              = false;
-  backupsLastPolicyId         = search.policyId;
-  backupsLastRows             = [];
-  backupsLastKeys             = [];
-  backupsBaseAssets           = null;
-  backupsCurrentAssetCount    = search.assetCount;
-  backupsCurrentFeeAda        = search.feeAda;
-  backupsCurrentFeeLovelace   = String(search.feeAda * 1_000_000);
-  backupsPaidForCurrentPolicy = backupsIsHolder; // holders still free
+  backupsHasScan            = false;
+  backupsLastPolicyId       = search.policyId;
+  backupsLastRows           = [];
+  backupsLastKeys           = [];
+  backupsBaseAssets         = null;
+  backupsCurrentAssetCount  = search.assetCount;
+  backupsCurrentFeeAda      = search.feeAda;
+  backupsCurrentFeeLovelace = String(search.feeAda * 1_000_000);
+
+  // Has this policy already been paid for (non-holder) in a previous session?
+  const alreadyPaidForThisPolicy =
+    !backupsIsHolder &&
+    search.paidFeeAda != null &&
+    search.paidFeeAda > 0 &&
+    !!search.paidTxHash;
+
+  // Holders are always "prepaid", and we also respect any prior per-policy payment.
+  backupsPaidForCurrentPolicy = backupsIsHolder || alreadyPaidForThisPolicy;
 
   if (zipBtn) zipBtn.disabled = true;
+
 
   if (statusEl) {
     statusEl.textContent =
@@ -2216,10 +2237,20 @@ function runQuotedScanFlow(search) {
       `<span>Policy <code>${search.policyId}</code> has a quoted total of <strong>${search.assetCount}</strong> asset(s).</span>`;
   }
 
+  const alreadyPaidForThisPolicy =
+    !backupsIsHolder &&
+    search.paidFeeAda != null &&
+    search.paidFeeAda > 0 &&
+    !!search.paidTxHash;
+
   if (feeStatus) {
     if (backupsIsHolder) {
       feeStatus.textContent =
         `You are a Refresh holder (≥ ${ACCESS_POLICIES[0].minAssets}). No BackUps fee for this policy.`;
+    } else if (alreadyPaidForThisPolicy) {
+      feeStatus.textContent =
+        'Your payment for this policy has already been recorded.\n' +
+        'BackUps will re-scan the assets so you can download the ZIP from this device.';
     } else if (search.feeAda > 0) {
       feeStatus.textContent =
         `Quoted BackUps fee for this policy is ${search.feeAda}₳ (10₳ per 50 assets, minimum 10₳).\n` +
@@ -2230,14 +2261,8 @@ function runQuotedScanFlow(search) {
     }
   }
 
-  if (quoteWarn) {
-    quoteWarn.textContent =
-      'This quote is based on the asset count shown above.\n' +
-      'If more assets are minted after this quote, you may be asked to pay the difference before the ZIP can be downloaded.';
-  }
-
   if (payBtn) {
-    if (!backupsIsHolder && search.feeAda > 0) {
+    if (!backupsIsHolder && search.feeAda > 0 && !alreadyPaidForThisPolicy) {
       payBtn.textContent = `Pay ${search.feeAda}₳ & unlock ZIP`;
       payBtn.style.display = 'inline-flex';
       payBtn.disabled = false;
@@ -2245,6 +2270,7 @@ function runQuotedScanFlow(search) {
       payBtn.style.display = 'none';
     }
   }
+
 
   // 🔹 Keep the “one quote” behavior, but still load metadata for the asset list
   if (scanBtn) {
@@ -2454,16 +2480,29 @@ function renderBackupsResults() {
           'No assets under this policy, so there is nothing to pay or download.';
       }
       zipBtn.disabled = true;
-    } else if (backupsPaidForCurrentPolicy) {
-      // Non-holder, but this policy has already been paid for in this session
+} else if (backupsPaidForCurrentPolicy) {
+      // Non-holder, but this policy has already been paid (this session or a previous one)
       if (feeStatus) {
-        feeStatus.textContent =
-          `Payment confirmed for this policy.\nYou can now download the BackUps .zip.`;
+        if (isInWalletBrowser) {
+          feeStatus.textContent =
+            'Your payment has processed. Downloading from mobile wallet explorers is not allowed.\n' +
+            'Connect with the same wallet from a different browser to proceed with your download.\n' +
+            'This is a mobile wallet explorer limitation, sorry for any inconvenience.';
+        } else {
+          feeStatus.textContent =
+            'Payment confirmed for this policy.\nYou can now download the BackUps .zip.';
+        }
       }
       if (payBtn) {
         payBtn.style.display = 'none';
       }
-      zipBtn.disabled = false;
+
+      if (isInWalletBrowser) {
+        zipBtn.disabled = true;
+        zipBtn.style.display = 'none';
+      } else {
+        zipBtn.disabled = false;
+      }
     } else {
       // Non-holder, not yet paid
       if (feeStatus) {
