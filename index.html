@@ -931,15 +931,16 @@
     <span>Policy ID to backup</span>
     <span class="backups-mode-toggle">
       <label style="font-size:0.8rem; display:inline-flex; align-items:center; gap:0.25rem;">
-        <input type="radio" name="backupsMode" value="blockchain" checked>
+        <input type="radio" name="backupsMode" value="blockchain">
         Blockchain
       </label>
       <label style="font-size:0.8rem; display:inline-flex; align-items:center; gap:0.25rem;">
-        <input type="radio" name="backupsMode" value="wallet">
+        <input type="radio" name="backupsMode" value="wallet" checked>
         Connected Wallet
       </label>
     </span>
   </span>
+
   <input id="backupsPolicyInput"
          type="text"
          placeholder="Paste a 56-character policy ID (no spaces)"/>
@@ -1110,6 +1111,48 @@
   </div>
 </div>
 
+  <!-- Confirm on-chain scan modal -->
+<div id="backupsScanConfirmModal" class="backups-modal hidden">
+  <div class="backups-modal-inner">
+    <div class="backups-modal-header">
+      <h3 style="margin:0; font-size:0.95rem;">
+        Confirm on-chain scan
+      </h3>
+      <button type="button"
+              id="backupsScanConfirmClose"
+              class="backups-modal-close"
+              aria-label="Close">
+        ×
+      </button>
+    </div>
+
+    <div class="backups-modal-body">
+      <p style="font-size:0.85rem; margin:0;">
+        This will scan the Cardano blockchain via Blockfrost for all assets under the
+        policy ID you entered. For large policies, this may take a while and will count
+        as a full on-chain scan.
+      </p>
+      <p style="font-size:0.8rem; margin-top:0.5rem; opacity:0.9;">
+        If you only want to scan assets you hold, switch to
+        <strong>Connected Wallet</strong> instead.
+      </p>
+
+      <div style="margin-top:0.9rem; display:flex; justify-content:flex-end; gap:0.5rem;">
+        <button type="button"
+                id="backupsScanCancelBtn"
+                class="loc-btn-secondary">
+          Cancel
+        </button>
+        <button type="button"
+                id="backupsScanConfirmBtn"
+                class="loc-btn-primary">
+          Scan now
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- WALLET GATE OVERLAY -->
 <div id="gateOverlay">
@@ -1264,7 +1307,7 @@ let backupsCurrentAssetCount = 0;
 
   // Current BackUps mode: full blockchain scan vs wallet-only scan
 // 'blockchain' = existing behavior, 'wallet' = only assets in connected wallet
-let backupsMode = 'blockchain';
+let backupsMode = 'wallet';
 
 // Wallet-mode view state
 let walletAssetsAll = [];            // [{ unit, policyId, nameHex, assetName, quantity, metadata, imageUrl }, ...]
@@ -1388,6 +1431,19 @@ async function logPaidAccess(txHash) {
 // ---------------------------------------------------------
 // Small helpers
 // ---------------------------------------------------------
+      var isAndroid = 
+      var isIOS = 
+
+      // Hide ZIP download button on mobile (Android + iOS)
+      if (isAndroid || isIOS) {
+        window.addEventListener('load', () => {
+          const zipBtn = document.getElementById('backupsDownloadZipBtn');
+          if (zipBtn) {
+            zipBtn.style.display = 'none';
+          }
+        });
+      }
+
 function shortenAddress(addr) {
   if (!addr || typeof addr !== 'string') return '–';
   if (addr.length <= 16) return addr;
@@ -3604,21 +3660,60 @@ backupsIsHolder = (accessVia === 'holder');
 backupsRequiresPayment = !backupsIsHolder;
   
 // Wire BackUps buttons
-const scanBtn = document.getElementById('backupsScanBtn');
-const zipBtn  = document.getElementById('backupsDownloadZipBtn');
-const payBtn  = document.getElementById('backupsPayBtn');
+  const scanBtn = document.getElementById('backupsScanBtn');
+  const zipBtn  = document.getElementById('backupsDownloadZipBtn');
+  const payBtn  = document.getElementById('backupsPayBtn');
 
-if (scanBtn) {
-  scanBtn.addEventListener('click', () => {
-    if (backupsMode === 'wallet') {
-      backupsScanWalletPolicy();
-    } else {
+  // New: confirm modal elements for blockchain scans
+  const scanConfirmModal = document.getElementById('backupsScanConfirmModal');
+  const scanConfirmBtn   = document.getElementById('backupsScanConfirmBtn');
+  const scanCancelBtn    = document.getElementById('backupsScanCancelBtn');
+  const scanConfirmClose = document.getElementById('backupsScanConfirmClose');
+
+  function openScanConfirmModal() {
+    if (!scanConfirmModal) {
+      // Fallback: run the scan directly if the modal isn't present
       backupsScanForPolicy();
+      return;
+    }
+    scanConfirmModal.classList.remove('hidden');
+  }
+
+  function closeScanConfirmModal() {
+    scanConfirmModal?.classList.add('hidden');
+  }
+
+  if (scanBtn) {
+    scanBtn.addEventListener('click', () => {
+      if (backupsMode === 'wallet') {
+        // Wallet mode: scan immediately
+        backupsScanWalletPolicy();
+      } else {
+        // Blockchain mode: show confirmation first
+        openScanConfirmModal();
+      }
+    });
+  }
+
+  // Confirm button actually runs the blockchain scan
+  scanConfirmBtn?.addEventListener('click', () => {
+    closeScanConfirmModal();
+    backupsScanForPolicy();
+  });
+
+  // Cancel / close actions
+  scanCancelBtn?.addEventListener('click', closeScanConfirmModal);
+  scanConfirmClose?.addEventListener('click', closeScanConfirmModal);
+  scanConfirmModal?.addEventListener('click', (evt) => {
+    if (evt.target === scanConfirmModal) {
+      closeScanConfirmModal();
     }
   });
-}
-zipBtn?.addEventListener('click', exportBackupsZip);
-payBtn?.addEventListener('click', payForCurrentPolicy);
+
+  // Existing bindings
+  zipBtn?.addEventListener('click', exportBackupsZip);
+  payBtn?.addEventListener('click', payForCurrentPolicy);
+
 
   // Mode toggle: Blockchain vs Connected Wallet
   const modeRadios = document.querySelectorAll('input[name="backupsMode"]');
@@ -3628,7 +3723,7 @@ payBtn?.addEventListener('click', payForCurrentPolicy);
     });
   });
   // Set initial mode
-  setBackupsMode('blockchain');
+  setBackupsMode('wallet');
 
   // Wallet filter buttons
   const applyFiltersBtn = document.getElementById('walletApplyFiltersBtn');
