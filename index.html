@@ -582,6 +582,15 @@
   color: #9aa3d9;
 }
 
+    /* ➕ Add this block */
+.thumb-media-html,
+.thumb-media-img {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
 .wallet-asset-title {
   font-weight: 600;
 }
@@ -1246,6 +1255,66 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+  // ---------------------------------------------------------
+// Detect B64
+// ---------------------------------------------------------
+  function getInlineDataUriFromMetadata(meta) {
+  if (!meta || typeof meta !== 'object') return null;
+
+  // 1) Try CIP-25 / CIP-68 style `files[0].src`
+  const files = meta.files;
+  if (Array.isArray(files) && files.length > 0 && files[0] && files[0].src) {
+    const raw = Array.isArray(files[0].src) ? files[0].src.join('') : files[0].src;
+    if (typeof raw === 'string' && raw.startsWith('data:')) {
+      return raw;
+    }
+  }
+
+  // 2) Fallbacks: src / image_data / image
+  const candidateKeys = ['src', 'image_data', 'image'];
+  for (const key of candidateKeys) {
+    const val = meta[key];
+    if (!val) continue;
+
+    const raw = Array.isArray(val) ? val.join('') : val;
+    if (typeof raw === 'string' && raw.startsWith('data:')) {
+      return raw;
+    }
+  }
+
+  return null;
+}
+
+  function buildBase64ThumbMedia(meta) {
+  const dataUri = getInlineDataUriFromMetadata(meta);
+  if (!dataUri) return ''; // no inline base64 found, let existing logic handle it
+
+  // HTML on-chain
+  if (dataUri.startsWith('data:text/html')) {
+    return `
+      <iframe 
+        src="${dataUri}" 
+        class="thumb-media thumb-media-html" 
+        loading="lazy"
+      ></iframe>`;
+  }
+
+  // Image on-chain (png, svg+xml, jpeg, etc)
+  if (dataUri.startsWith('data:image/')) {
+    return `
+      <img 
+        src="${dataUri}" 
+        class="thumb-media thumb-media-img" 
+        loading="lazy"
+      />`;
+  }
+
+  // Other data types -> let your existing thumbnail system do its thing
+  return '';
+}
+
+
+
 function buildPropertiesSnippet(meta) {
   if (!meta || typeof meta !== 'object') return '';
 
@@ -1497,21 +1566,33 @@ function renderWalletAssetsView() {
       card.classList.add('selected');
     }
 
-    let thumbHtml = '';
-    if (asset.imageUrl) {
-      thumbHtml = `<img src="${asset.imageUrl}" alt="Asset preview" class="wallet-asset-thumb">`;
-    } else {
-      thumbHtml = `<div class="wallet-asset-thumb no-image">No image</div>`;
-    }
+// 🔹 First, try to build a base64 on-chain thumbnail (HTML or image)
+const base64Thumb = buildBase64ThumbMedia(asset.metadata);
 
-    const propsHtml = buildPropertiesSnippet(asset.metadata);
+let thumbHtml = '';
+if (base64Thumb) {
+  // Wrap your base64 view in the same frame used for normal thumbs
+  thumbHtml = `
+    <div class="wallet-asset-thumb">
+      ${base64Thumb}
+    </div>`;
+} else if (asset.imageUrl) {
+  // Fallback to regular image URL (IPFS/HTTP)
+  thumbHtml = `<img src="${asset.imageUrl}" alt="Asset preview" class="wallet-asset-thumb">`;
+} else {
+  // Last resort: no image
+  thumbHtml = `<div class="wallet-asset-thumb no-image">No image</div>`;
+}
 
-    card.innerHTML = `
-      ${thumbHtml}
-      <div class="wallet-asset-title">${escapeHtml(asset.assetName || '(no name)')}</div>
-      <div class="wallet-asset-meta">Qty: ${asset.quantity}</div>
-      <div class="wallet-asset-props">${propsHtml}</div>
-    `;
+const propsHtml = buildPropertiesSnippet(asset.metadata);
+
+card.innerHTML = `
+  ${thumbHtml}
+  <div class="wallet-asset-title">${escapeHtml(asset.assetName || '(no name)')}</div>
+  <div class="wallet-asset-meta">Qty: ${asset.quantity}</div>
+  <div class="wallet-asset-props">${propsHtml}</div>
+`;
+
 
     card.addEventListener('click', () => {
       if (walletSelectedUnits.has(asset.unit)) {
