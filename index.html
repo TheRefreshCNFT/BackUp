@@ -1248,9 +1248,39 @@ function escapeHtml(str) {
 
 function buildPropertiesSnippet(meta) {
   if (!meta || typeof meta !== 'object') return '';
+
+  // Hide technical / heavy fields from thumbnail previews.
+  // We still keep them in the JSON / CSV / ZIP.
+  const HIDDEN_KEYS = new Set([
+    'name',
+    'image',
+    'image_data',
+    'files',
+    'file',
+    'src',
+    'mediaType',
+    'media_type',
+    'mimeType',
+    'mime_type',
+    'ipfs',
+    'ipfs_hash',
+    'url',
+    'website',
+    'twitter',
+    'discord',
+    'policy',
+    'policyId',
+    'policy_id',
+    'asset',
+    'assetId',
+    'asset_id',
+    'assetName',
+    'asset_name',
+  ]);
+
   const entries = Object.entries(meta)
-    .filter(([k]) => k !== 'name' && k !== 'image')
-    .slice(0, 5);
+    .filter(([k]) => !HIDDEN_KEYS.has(k))   // keep rarity / traits, etc.
+    .slice(0, 5);                           // same cap as before
 
   if (!entries.length) return '';
 
@@ -1264,6 +1294,7 @@ function buildPropertiesSnippet(meta) {
     })
     .join('');
 }
+
 
 function matchesWalletFilters(asset) {
   if (!walletFilterState || !Object.keys(walletFilterState).length) return true;
