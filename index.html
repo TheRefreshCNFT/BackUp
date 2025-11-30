@@ -411,12 +411,14 @@
       opacity: 0.75;
     }
 
-    .loc-tx-status {
-      margin-top: 0.5rem;
-      font-size: 0.8rem;
-      opacity: 0.9;
-      word-break: break-all;
-    }
+.loc-tx-status {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  opacity: 0.9;
+  word-break: normal;        /* don’t break inside words */
+  overflow-wrap: break-word; /* still wrap very long hashes/URLs when needed */
+}
+
     
 .loc-status-stack {
   margin-top: 0.75rem;
