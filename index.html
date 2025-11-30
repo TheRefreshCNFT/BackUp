@@ -438,6 +438,167 @@
   line-height: 1.5;
 }
 
+.backups-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  background: rgba(10, 18, 46, 0.75);
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+}
+
+/* Wallet assets section */
+#walletAssetsSection {
+  margin-top: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(5, 10, 24, 0.9);
+  padding: 0.75rem 0.9rem 1rem;
+}
+
+/* Filter wrapper */
+.wallet-filter-details {
+  margin: 0.4rem 0 0.6rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(5, 10, 24, 0.85);
+  padding: 0.4rem 0.6rem 0.55rem;
+}
+
+.wallet-filter-summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #e4e8ff;
+}
+
+.wallet-filter-summary::-webkit-details-marker {
+  display: none;
+}
+
+.wallet-filter-summary::before {
+  content: '▸';
+  font-size: 0.75rem;
+  opacity: 0.8;
+  transition: transform 0.15s ease;
+}
+
+.wallet-filter-details[open] .wallet-filter-summary::before {
+  transform: rotate(90deg);
+}
+
+.wallet-filters-container {
+  margin-top: 0.35rem;
+  max-height: 190px;
+  overflow: auto;
+}
+
+.wallet-filters-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.wallet-filter-group {
+  background: rgba(10, 18, 46, 0.9);
+  border-radius: 0.55rem;
+  padding: 0.4rem 0.5rem 0.35rem;
+  min-width: 150px;
+}
+
+.wallet-filter-group-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.wallet-filter-option {
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.15rem;
+}
+
+.wallet-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+/* Assets grid */
+.wallet-assets-grid {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.wallet-asset-card {
+  width: 150px;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(120, 141, 255, 0.35);
+  background: rgba(7, 12, 30, 0.95);
+  padding: 0.35rem 0.4rem 0.45rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.wallet-asset-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.6);
+}
+
+.wallet-asset-card.selected {
+  border-color: #7cffb3;
+  box-shadow: 0 0 0 1px rgba(124, 255, 179, 0.7);
+}
+
+.wallet-asset-thumb {
+  width: 100%;
+  aspect-ratio: 1/1;
+  border-radius: 0.45rem;
+  object-fit: cover;
+  background: #050810;
+}
+
+.wallet-asset-thumb.no-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: #9aa3d9;
+}
+
+.wallet-asset-title {
+  font-weight: 600;
+}
+
+.wallet-asset-meta {
+  font-size: 0.7rem;
+  color: #9aa3d9;
+}
+
+.wallet-asset-props {
+  margin-top: 0.1rem;
+  max-height: 4.1em;
+  overflow: hidden;
+  font-size: 0.7rem;
+}
+
+
 
     .prev-search-item {
   padding: 0.35rem 0.5rem;
@@ -595,9 +756,9 @@
         One-click backup of all assets under a policy ID. No wallet scan, chain-wide view.
       </p>
 
-      <div class="loc-substeps">
+<div class="loc-substeps">
   <ul>
-    <li>Connect your wallet to confirm your access type.</li>
+    <li>Select <strong>Blockchain</strong> or <strong>Connected Wallet</strong>.</li>
     <li>Paste the policy ID you want to BackUp.</li>
     <li>Review the quoted fee and pay if you’re not a Refresh Whale.</li>
     <li>Once the payment is confirmed, BackUps downloads are unlocked.</li>
@@ -620,16 +781,29 @@
         <div class="loc-card">
           <h3>Scan a policy</h3>
 
-          <label class="loc-field">
-            <span>Policy ID to backup</span>
-            <input id="backupsPolicyInput"
-                   type="text"
-                   placeholder="Paste a 56-character policy ID (no spaces)"/>
-          </label>
+<label class="loc-field">
+  <span style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
+    <span>Policy ID to backup</span>
+    <span class="backups-mode-toggle">
+      <label style="font-size:0.8rem; display:inline-flex; align-items:center; gap:0.25rem;">
+        <input type="radio" name="backupsMode" value="blockchain" checked>
+        Blockchain
+      </label>
+      <label style="font-size:0.8rem; display:inline-flex; align-items:center; gap:0.25rem;">
+        <input type="radio" name="backupsMode" value="wallet">
+        Connected Wallet
+      </label>
+    </span>
+  </span>
+  <input id="backupsPolicyInput"
+         type="text"
+         placeholder="Paste a 56-character policy ID (no spaces)"/>
+</label>
 
-          <button type="button" id="backupsScanBtn" class="loc-btn-primary">
-            Scan policy on chain
-          </button>
+<button type="button" id="backupsScanBtn" class="loc-btn-primary">
+  Scan policy on chain
+</button>
+
 
 <p class="loc-hint">
   BackUps queries Blockfrost for all assets under this policy and grabs every
@@ -711,8 +885,43 @@
         </div>
       </div>
     </section>
-        <section class="loc-status-block loc-legal">
+
+    <!-- Wallet-mode assets & filters (full width, scrollable) -->
+    <section id="walletAssetsSection" class="loc-status-block hidden">
+      <h3 style="margin-top:0; font-size:0.95rem; margin-bottom:0.4rem;">
+        Wallet assets for this policy
+      </h3>
+      <p id="walletAssetsSummary" class="loc-hint">
+        No wallet scan yet. Select “Connected Wallet”, enter a policy ID, and run a scan.
+      </p>
+
+      <details id="walletFilterDetails" class="wallet-filter-details">
+        <summary class="wallet-filter-summary">
+          Filter by metadata properties (optional)
+        </summary>
+
+        <div id="walletFiltersContainer" class="wallet-filters-container">
+          <!-- Filter groups will be injected here -->
+        </div>
+
+        <div class="wallet-filter-actions">
+          <button type="button" id="walletApplyFiltersBtn" class="loc-btn-secondary">
+            Apply filter
+          </button>
+          <button type="button" id="walletClearFiltersBtn" class="loc-btn-secondary">
+            Clear filter
+          </button>
+        </div>
+      </details>
+
+      <div id="walletAssetsGrid" class="wallet-assets-grid">
+        <!-- Asset thumbnail cards injected here -->
+      </div>
+    </section>
+
+    <section class="loc-status-block loc-legal">
       <p class="loc-legal-text">
+
         The Refresh and/or BackUps are not responsible for what you or anyone,
         that obtains the files and/or images you download, do with those files
         and/or images. This tool accesses decentralized data fully available on
@@ -879,6 +1088,16 @@ let backupsCurrentFeeAda = 0;                // dynamic fee for current scan
 let backupsCurrentFeeLovelace = '0';
 let backupsCurrentAssetCount = 0;
 
+  // Current BackUps mode: full blockchain scan vs wallet-only scan
+// 'blockchain' = existing behavior, 'wallet' = only assets in connected wallet
+let backupsMode = 'blockchain';
+
+// Wallet-mode view state
+let walletAssetsAll = [];            // [{ unit, policyId, nameHex, assetName, quantity, metadata, imageUrl }, ...]
+let walletSelectedUnits = new Set(); // Set<string> of unit
+let walletFilterState = {};          // { [propKey: string]: Set<string> }
+
+
 
 // ---------------------------------------------------------
 // Helper text for gate
@@ -1012,6 +1231,330 @@ function hexToAscii(hex) {
   }
   return str;
 }
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildPropertiesSnippet(meta) {
+  if (!meta || typeof meta !== 'object') return '';
+  const entries = Object.entries(meta)
+    .filter(([k]) => k !== 'name' && k !== 'image')
+    .slice(0, 5);
+
+  if (!entries.length) return '';
+
+  return entries
+    .map(([k, v]) => {
+      const normVal = normalizeMetadataValue(v);
+      const valStr = typeof normVal === 'object'
+        ? JSON.stringify(normVal)
+        : String(normVal);
+      return `<div><strong>${escapeHtml(k)}:</strong> ${escapeHtml(valStr)}</div>`;
+    })
+    .join('');
+}
+
+function matchesWalletFilters(asset) {
+  if (!walletFilterState || !Object.keys(walletFilterState).length) return true;
+  const meta = asset.metadata || {};
+
+  for (const key of Object.keys(walletFilterState)) {
+    const set = walletFilterState[key];
+    if (!set || !set.size) continue;
+
+    const rawVal = meta[key];
+    const normVal = normalizeMetadataValue(rawVal);
+    const valStr = typeof normVal === 'object'
+      ? JSON.stringify(normVal)
+      : String(normVal);
+
+    if (!set.has(valStr)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function buildWalletFiltersUI() {
+  const filtersContainer = document.getElementById('walletFiltersContainer');
+  if (!filtersContainer) return;
+
+  filtersContainer.innerHTML = '';
+
+  if (!walletAssetsAll.length) {
+    filtersContainer.textContent = 'No assets to filter yet.';
+    return;
+  }
+
+  const propMap = {};
+  for (const asset of walletAssetsAll) {
+    const meta = asset.metadata || {};
+    for (const key of Object.keys(meta)) {
+      if (key === 'name' || key === 'image') continue;
+      const normVal = normalizeMetadataValue(meta[key]);
+      const valStr = typeof normVal === 'object'
+        ? JSON.stringify(normVal)
+        : String(normVal);
+      if (!propMap[key]) propMap[key] = {};
+      if (!propMap[key][valStr]) propMap[key][valStr] = 0;
+      propMap[key][valStr]++;
+    }
+  }
+
+  const keys = Object.keys(propMap).sort();
+  if (!keys.length) {
+    filtersContainer.textContent = 'No extra properties found to filter on.';
+    return;
+  }
+
+  const groupsWrapper = document.createElement('div');
+  groupsWrapper.className = 'wallet-filters-grid';
+
+  keys.forEach((key) => {
+    const group = document.createElement('div');
+    group.className = 'wallet-filter-group';
+
+    const title = document.createElement('div');
+    title.className = 'wallet-filter-group-title';
+    title.textContent = key;
+    group.appendChild(title);
+
+    const values = Object.entries(propMap[key]).sort(
+      (a, b) => a[0].localeCompare(b[0])
+    );
+
+    values.forEach(([valStr, count]) => {
+      const label = document.createElement('label');
+      label.className = 'wallet-filter-option';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.dataset.key = key;
+      cb.dataset.value = valStr;
+
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(` ${valStr} (${count})`));
+      group.appendChild(label);
+    });
+
+    groupsWrapper.appendChild(group);
+  });
+
+  filtersContainer.appendChild(groupsWrapper);
+}
+
+
+  function setBackupsMode(mode) {
+  backupsMode = mode === 'wallet' ? 'wallet' : 'blockchain';
+
+  const walletSection   = document.getElementById('walletAssetsSection');
+  const scanBtn         = document.getElementById('backupsScanBtn');
+  const summary         = document.getElementById('backupsResultsSummary');
+  const feeStatus       = document.getElementById('backupsFeeStatus');
+  const scanStatus      = document.getElementById('backupsScanStatus');
+  const quoteWarn       = document.getElementById('backupsQuoteWarning');
+  const downloadStatus  = document.getElementById('backupsDownloadStatus');
+  const table           = document.getElementById('backupsResultsTable');
+  const tbody           = table?.querySelector('tbody');
+  const payBtn          = document.getElementById('backupsPayBtn');
+  const zipBtn          = document.getElementById('backupsDownloadZipBtn');
+
+  // Reset shared BackUps state
+  backupsHasScan = false;
+  backupsLastPolicyId = '';
+  backupsLastRows = [];
+  backupsLastKeys = [];
+  backupsBaseAssets = null;
+  backupsCurrentAssetCount = 0;
+  backupsCurrentFeeAda = 0;
+  backupsCurrentFeeLovelace = '0';
+
+  // Reset wallet-specific state
+  walletAssetsAll = [];
+  walletSelectedUnits = new Set();
+  walletFilterState = {};
+
+  if (walletSection) {
+    if (backupsMode === 'wallet') {
+      walletSection.classList.remove('hidden');
+    } else {
+      walletSection.classList.add('hidden');
+    }
+  }
+
+  if (tbody) tbody.innerHTML = '';
+  if (table) table.classList.add('hidden');
+  if (feeStatus) feeStatus.textContent = '';
+  if (scanStatus) scanStatus.textContent = '';
+  if (quoteWarn) quoteWarn.textContent = '';
+  if (downloadStatus) downloadStatus.textContent = '';
+  if (payBtn) {
+    payBtn.style.display = 'none';
+    payBtn.disabled = false;
+  }
+  if (zipBtn) zipBtn.disabled = true;
+
+  if (scanBtn) {
+    scanBtn.disabled = false;
+    scanBtn.textContent =
+      backupsMode === 'wallet'
+        ? 'Scan policy (wallet)'
+        : 'Scan policy on chain';
+  }
+
+  if (summary) {
+    summary.innerHTML =
+      backupsMode === 'wallet'
+        ? '<span>No wallet scan yet. Select “Connected Wallet”, paste a policy ID, then press “Scan policy (wallet)”.</span>'
+        : '<span>No scan yet. Paste a policy ID and press “Scan policy on chain”.</span>';
+  }
+
+  const walletSummary = document.getElementById('walletAssetsSummary');
+  if (walletSummary) {
+    walletSummary.textContent =
+      'No wallet scan yet. Select “Connected Wallet”, enter a policy ID, and run a scan.';
+  }
+}
+
+function renderWalletAssetsView() {
+  const gridEl     = document.getElementById('walletAssetsGrid');
+  const summaryEl  = document.getElementById('walletAssetsSummary');
+  const policyInput = document.getElementById('backupsPolicyInput');
+
+  if (!gridEl || !summaryEl) return;
+
+  gridEl.innerHTML = '';
+
+  if (!walletAssetsAll.length) {
+    summaryEl.textContent =
+      'No assets to display yet. Run a wallet scan for a policy ID first.';
+    return;
+  }
+
+  const total = walletAssetsAll.length;
+  const selectedCount = walletSelectedUnits.size;
+
+  const filteredAssets = walletAssetsAll.filter(matchesWalletFilters);
+
+  // Render cards
+  for (const asset of filteredAssets) {
+    const card = document.createElement('div');
+    card.className = 'wallet-asset-card';
+    if (walletSelectedUnits.has(asset.unit)) {
+      card.classList.add('selected');
+    }
+
+    let thumbHtml = '';
+    if (asset.imageUrl) {
+      thumbHtml = `<img src="${asset.imageUrl}" alt="Asset preview" class="wallet-asset-thumb">`;
+    } else {
+      thumbHtml = `<div class="wallet-asset-thumb no-image">No image</div>`;
+    }
+
+    const propsHtml = buildPropertiesSnippet(asset.metadata);
+
+    card.innerHTML = `
+      ${thumbHtml}
+      <div class="wallet-asset-title">${escapeHtml(asset.assetName || '(no name)')}</div>
+      <div class="wallet-asset-meta">Qty: ${asset.quantity}</div>
+      <div class="wallet-asset-props">${propsHtml}</div>
+    `;
+
+    card.addEventListener('click', () => {
+      if (walletSelectedUnits.has(asset.unit)) {
+        walletSelectedUnits.delete(asset.unit);
+      } else {
+        walletSelectedUnits.add(asset.unit);
+      }
+      renderWalletAssetsView(); // re-render selection + fee
+    });
+
+    gridEl.appendChild(card);
+  }
+
+  const filteredCount = filteredAssets.length;
+  const feeAda = computeBackupsFeeAda(selectedCount);
+
+  const filterPart =
+    filteredCount === total
+      ? `Showing all ${total} asset(s) from your wallet for this policy.`
+      : `Showing ${filteredCount} of ${total} asset(s) based on current filters.`;
+
+  const selectedPart =
+    selectedCount > 0
+      ? `Selected ${selectedCount} asset(s).`
+      : 'No assets selected yet.';
+
+  const feePart = selectedCount
+    ? (backupsIsHolder
+        ? 'You are a Refresh holder – no BackUps fee for this selection.'
+        : `BackUps fee for this selection: ${feeAda}₳ (10₳ per 50 assets, minimum 10₳).`)
+    : '';
+
+  summaryEl.textContent =
+    `${filterPart} ${selectedPart}${feePart ? ' ' + feePart : ''}`;
+
+  // Sync BackUps core state so "Results & export" behaves identically,
+  // but based on selected wallet assets instead of a chain-wide scan.
+  const selectedRows = walletAssetsAll
+    .filter(a => walletSelectedUnits.has(a.unit))
+    .map(a => ({
+      unit: a.unit,
+      policyId: a.policyId,
+      nameHex: a.nameHex,
+      assetName: a.assetName,
+      quantity: a.quantity,
+      metadata: a.metadata,
+    }));
+
+  const keysSet = new Set();
+  selectedRows.forEach(row => {
+    const meta = row.metadata || {};
+    Object.keys(meta).forEach(k => keysSet.add(k));
+  });
+
+  backupsLastPolicyId       = (policyInput?.value || '').trim();
+  backupsLastRows           = selectedRows;
+  backupsLastKeys           = Array.from(keysSet).sort();
+  backupsHasScan            = selectedRows.length > 0;
+  backupsCurrentAssetCount  = selectedRows.length;
+  backupsCurrentFeeAda      = feeAda;
+  backupsCurrentFeeLovelace = String(feeAda * 1_000_000);
+
+  if (selectedRows.length) {
+    // Use your existing renderer for "Results & export" panel + fee/pay logic
+    renderBackupsResults();
+  } else {
+    // No assets selected => reset "Results & export" so it doesn't say "no assets on chain"
+    const summary   = document.getElementById('backupsResultsSummary');
+    const feeStatus = document.getElementById('backupsFeeStatus');
+    const zipBtn    = document.getElementById('backupsDownloadZipBtn');
+    const payBtn    = document.getElementById('backupsPayBtn');
+    const table     = document.getElementById('backupsResultsTable');
+    const tbody     = table?.querySelector('tbody');
+
+    if (summary) {
+      summary.innerHTML =
+        '<span>Select at least one asset from your wallet below to generate a BackUps quote.</span>';
+    }
+    if (feeStatus) feeStatus.textContent = '';
+    if (zipBtn) zipBtn.disabled = true;
+    if (payBtn) {
+      payBtn.style.display = 'none';
+      payBtn.disabled = false;
+    }
+    if (tbody) tbody.innerHTML = '';
+    if (table) table.classList.add('hidden');
+  }
+}
+
+
 
 async function loadPreviousSearches() {
   if (!userIdentity) return;
@@ -1593,6 +2136,162 @@ async function backupsScanForPolicy() {
   }
 }
 
+async function backupsScanWalletPolicy() {
+  const statusEl        = document.getElementById('backupsScanStatus');
+  const policyEl        = document.getElementById('backupsPolicyInput');
+  const summary         = document.getElementById('backupsResultsSummary');
+  const walletSummaryEl = document.getElementById('walletAssetsSummary');
+  const walletSection   = document.getElementById('walletAssetsSection');
+  const feeStatus       = document.getElementById('backupsFeeStatus');
+  const quoteWarn       = document.getElementById('backupsQuoteWarning');
+  const downloadStatus  = document.getElementById('backupsDownloadStatus');
+  const table           = document.getElementById('backupsResultsTable');
+  const tbody           = table?.querySelector('tbody');
+  const payBtn          = document.getElementById('backupsPayBtn');
+  const zipBtn          = document.getElementById('backupsDownloadZipBtn');
+
+  // Basic resets
+  if (feeStatus) feeStatus.textContent = '';
+  if (quoteWarn) quoteWarn.textContent = '';
+  if (downloadStatus) downloadStatus.textContent = '';
+  if (tbody) tbody.innerHTML = '';
+  if (table) table.classList.add('hidden');
+  if (payBtn) {
+    payBtn.style.display = 'none';
+    payBtn.disabled = false;
+  }
+  if (zipBtn) zipBtn.disabled = true;
+
+  walletAssetsAll = [];
+  walletSelectedUnits = new Set();
+  walletFilterState = {};
+
+  backupsHasScan              = false;
+  backupsLastPolicyId         = '';
+  backupsLastRows             = [];
+  backupsLastKeys             = [];
+  backupsBaseAssets           = null;
+  backupsCurrentAssetCount    = 0;
+  backupsCurrentFeeAda        = 0;
+  backupsCurrentFeeLovelace   = '0';
+
+  const rawPolicy = (policyEl?.value || '').trim();
+
+  if (!rawPolicy) {
+    if (statusEl) statusEl.textContent = 'Enter a policy ID to scan.';
+    return;
+  }
+  if (!meshWallet) {
+    if (statusEl) statusEl.textContent = 'Connect your wallet in the gate first.';
+    return;
+  }
+  if (!BLOCKFROST_PROJECT_ID) {
+    if (statusEl) statusEl.textContent =
+      'Blockfrost project ID is not set in the code. Please configure BLOCKFROST_PROJECT_ID.';
+    return;
+  }
+
+  try {
+    if (statusEl) {
+      statusEl.textContent = 'Scanning your connected wallet for this policy…';
+    }
+
+    const allAssets = await meshWallet.getAssets();
+    const matches = allAssets.filter(
+      (a) => a && a.policyId === rawPolicy
+    );
+
+    if (!matches.length) {
+      if (summary) {
+        summary.innerHTML =
+          `<span>Your wallet does not currently hold any assets under policy <code>${rawPolicy}</code>.</span>`;
+      }
+      if (walletSummaryEl) {
+        walletSummaryEl.textContent =
+          'No assets for this policy in your connected wallet.';
+      }
+      if (statusEl) statusEl.textContent = 'Wallet scan complete. No matching assets.';
+      if (walletSection) walletSection.classList.remove('hidden');
+      return;
+    }
+
+    if (walletSection) walletSection.classList.remove('hidden');
+
+    const results = [];
+    for (let i = 0; i < matches.length; i++) {
+      const a = matches[i];
+      if (statusEl) {
+        statusEl.textContent =
+          `Fetching metadata for wallet asset ${i + 1} / ${matches.length}…`;
+      }
+
+      const unit = a.unit || (a.policyId + (a.assetName || ''));
+      if (!unit) continue;
+
+      const metadata = await fetchMetadataForAsset(unit) || {};
+      const policyHex = unit.slice(0, 56);
+      const nameHex   = unit.slice(56);
+
+      let assetName = '';
+      if (typeof metadata.name === 'string' && metadata.name.trim()) {
+        assetName = metadata.name.trim();
+      } else {
+        assetName = hexToAscii(nameHex) || '(no ASCII name)';
+      }
+
+      const quantity = String(a.quantity ?? '1');
+
+      let imageUrl = '';
+      let imgField = metadata.image;
+      if (Array.isArray(imgField)) {
+        imgField = imgField.find(v => typeof v === 'string') || null;
+      }
+      if (typeof imgField === 'string') {
+        if (imgField.startsWith('ipfs://')) {
+          let path = imgField.replace(/^ipfs:\/\//, '');
+          if (path.startsWith('ipfs/')) {
+            path = path.slice(5);
+          }
+          imageUrl = `https://ipfs.io/ipfs/${path}`;
+        } else if (imgField.startsWith('http://') || imgField.startsWith('https://')) {
+          imageUrl = imgField;
+        }
+      }
+
+      results.push({
+        unit,
+        policyId: policyHex,
+        nameHex,
+        assetName,
+        quantity,
+        metadata,
+        imageUrl,
+      });
+    }
+
+    walletAssetsAll = results;
+    backupsLastPolicyId = rawPolicy;
+
+    if (summary) {
+      summary.innerHTML =
+        `<span>Your wallet holds <strong>${results.length}</strong> asset(s) under policy <code>${rawPolicy}</code>. Select the ones you want to BackUp below.</span>`;
+    }
+
+    buildWalletFiltersUI();
+    renderWalletAssetsView();
+
+    if (statusEl) {
+      statusEl.textContent =
+        'Wallet scan complete. Select assets to generate a BackUps quote.';
+    }
+  } catch (err) {
+    console.error('[BackUps] wallet scan error:', err);
+    if (statusEl) {
+      statusEl.textContent =
+        'An error occurred while scanning your wallet for this policy.';
+    }
+  }
+}
 
 
 function csvEscape(value) {
@@ -2238,27 +2937,46 @@ if (!backupsLastPolicyId || backupsCurrentFeeAda <= 0) {
     if (feeStatus) {
       feeStatus.textContent =
         `Payment submitted for policy ${backupsLastPolicyId}.\n` +
-        `Tx: ${txHash}\nFetching asset metadata and preparing ZIP…`;
+        `Tx: ${txHash}`;
     }
 
-    // Now do the heavy per-asset metadata scan
-    if (scanStatus) {
-      scanStatus.textContent = 'Scanning assets and fetching on-chain metadata…';
-    }
+    if (backupsMode === 'blockchain') {
+      // Existing behavior: run a full metadata scan after payment
+      if (feeStatus) {
+        feeStatus.textContent += '\nFetching asset metadata and preparing ZIP…';
+      }
 
-    const downloadStatus = document.getElementById('backupsDownloadStatus');
-    if (downloadStatus) {
-      const headerLine =
-        'Processing BackUps request… Fetching asset metadata and preparing ZIP…';
-      downloadStatus.innerHTML =
-        `<strong>${headerLine}</strong><br>` +
-        `<span style="opacity:0.85;">Preparing metadata files…</span>`;
-    }
+      if (scanStatus) {
+        scanStatus.textContent = 'Scanning assets and fetching on-chain metadata…';
+      }
 
-    await scanMetadataForCurrentPolicy(downloadStatus || scanStatus || feeStatus || null);
+      const downloadStatus = document.getElementById('backupsDownloadStatus');
+      if (downloadStatus) {
+        const headerLine =
+          'Processing BackUps request… Fetching asset metadata and preparing ZIP…';
+        downloadStatus.innerHTML =
+          `<strong>${headerLine}</strong><br>` +
+          `<span style="opacity:0.85;">Preparing metadata files…</span>`;
+      }
 
-    if (scanStatus) {
-      scanStatus.textContent = 'Scan complete.';
+      await scanMetadataForCurrentPolicy(
+        document.getElementById('backupsDownloadStatus') ||
+        scanStatus ||
+        feeStatus ||
+        null
+      );
+
+      if (scanStatus) {
+        scanStatus.textContent = 'Scan complete.';
+      }
+    } else {
+      // Wallet mode: metadata is already loaded for the selected assets
+      if (scanStatus) {
+        scanStatus.textContent =
+          'Wallet selection confirmed. You can now download the BackUps .zip for these assets.';
+      }
+      // Ensure Results & export panel is up to date
+      renderBackupsResults();
     }
 
 
@@ -2328,9 +3046,61 @@ const scanBtn = document.getElementById('backupsScanBtn');
 const zipBtn  = document.getElementById('backupsDownloadZipBtn');
 const payBtn  = document.getElementById('backupsPayBtn');
 
-scanBtn?.addEventListener('click', backupsScanForPolicy);
+if (scanBtn) {
+  scanBtn.addEventListener('click', () => {
+    if (backupsMode === 'wallet') {
+      backupsScanWalletPolicy();
+    } else {
+      backupsScanForPolicy();
+    }
+  });
+}
 zipBtn?.addEventListener('click', exportBackupsZip);
 payBtn?.addEventListener('click', payForCurrentPolicy);
+
+  // Mode toggle: Blockchain vs Connected Wallet
+  const modeRadios = document.querySelectorAll('input[name="backupsMode"]');
+  modeRadios.forEach((radio) => {
+    radio.addEventListener('change', (evt) => {
+      setBackupsMode(evt.target.value);
+    });
+  });
+  // Set initial mode
+  setBackupsMode('blockchain');
+
+  // Wallet filter buttons
+  const applyFiltersBtn = document.getElementById('walletApplyFiltersBtn');
+  const clearFiltersBtn = document.getElementById('walletClearFiltersBtn');
+
+  applyFiltersBtn?.addEventListener('click', () => {
+    walletFilterState = {};
+    const container = document.getElementById('walletFiltersContainer');
+    if (!container) return;
+    const checkboxes = container.querySelectorAll(
+      'input[type="checkbox"][data-key][data-value]'
+    );
+    checkboxes.forEach((cb) => {
+      if (!cb.checked) return;
+      const key = cb.dataset.key;
+      const val = cb.dataset.value;
+      if (!walletFilterState[key]) {
+        walletFilterState[key] = new Set();
+      }
+      walletFilterState[key].add(val);
+    });
+    renderWalletAssetsView();
+  });
+
+  clearFiltersBtn?.addEventListener('click', () => {
+    walletFilterState = {};
+    const container = document.getElementById('walletFiltersContainer');
+    if (container) {
+      const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach((cb) => { cb.checked = false; });
+    }
+    renderWalletAssetsView();
+  });
+
 
     // Render any previously loaded searches into the UI
   renderPreviousSearches();
@@ -2342,7 +3112,12 @@ payBtn?.addEventListener('click', payForCurrentPolicy);
 
     const val = policyInput.value.trim();
     if (!val) {
-      // Empty field => allow a new scan
+      scanBtn.disabled = false;
+      return;
+    }
+
+    // Previous-quote / one-scan behavior only applies to full blockchain mode.
+    if (backupsMode !== 'blockchain') {
       scanBtn.disabled = false;
       return;
     }
@@ -2352,16 +3127,13 @@ payBtn?.addEventListener('click', payForCurrentPolicy);
     );
 
     if (existing) {
-      // 🔹 As soon as the input matches a previous policy:
-      //     - reuse the quote
-      //     - lock the Scan button
       runQuotedScanFlow(existing);
       scanBtn.disabled = true;
     } else {
-      // New policy (no quote yet) => scanning is allowed
       scanBtn.disabled = false;
     }
   }
+
 
   policyInput?.addEventListener('input', handlePolicyInputChange);
   policyInput?.addEventListener('blur', handlePolicyInputChange);
