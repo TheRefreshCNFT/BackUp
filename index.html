@@ -1304,6 +1304,7 @@ let backupsPaidForCurrentPolicy = false;     // set to true after successful pay
 let backupsCurrentFeeAda = 0;                // dynamic fee for current scan
 let backupsCurrentFeeLovelace = '0';
 let backupsCurrentAssetCount = 0;
+let backupsCurrentSearchRecord = null; 
 
   // Current BackUps mode: full blockchain scan vs wallet-only scan
 // 'blockchain' = existing behavior, 'wallet' = only assets in connected wallet
@@ -2050,6 +2051,24 @@ card.innerHTML = `
   backupsCurrentAssetCount  = selectedRows.length;
   backupsCurrentFeeAda      = feeAda;
   backupsCurrentFeeLovelace = String(feeAda * 1_000_000);
+  
+    // Persist this wallet-based quote so it can be reused from history,
+  // including the exact set of selected units at the time of the quote.
+  if (backupsLastPolicyId && selectedRows.length) {
+    savePreviousSearch(
+      backupsLastPolicyId,
+      backupsCurrentAssetCount,
+      backupsCurrentFeeAda,
+      {
+        modeUsed: 'wallet',
+        units: selectedRows.map((row) => ({
+          unit: row.unit,
+          quantity: row.quantity,
+        })),
+      }
+    );
+  }
+
 
   if (selectedRows.length) {
     // Use your existing renderer for "Results & export" panel + fee/pay logic
@@ -2198,8 +2217,12 @@ const makeItem = (s) => {
   div.addEventListener('click', () => {
     const input = document.getElementById('backupsPolicyInput');
     if (input) input.value = s.policyId;
+
+    backupsCurrentSearchRecord = s;  // <--- NEW
+
     runQuotedScanFlow(s);
   });
+
 
   // Clicking "Download Receipt" only downloads, doesn’t trigger scan
   const receiptLink = div.querySelector('.prev-search-receipt-link');
@@ -2241,6 +2264,7 @@ const makeItem = (s) => {
 }
 
 function runQuotedScanFlow(search) {
+    backupsCurrentSearchRecord = search || null; 
   const statusEl  = document.getElementById('backupsScanStatus');
   const summary   = document.getElementById('backupsResultsSummary');
   const feeStatus = document.getElementById('backupsFeeStatus');
@@ -2296,30 +2320,41 @@ function runQuotedScanFlow(search) {
     if (backupsIsHolder) {
       feeStatus.textContent =
         `You are a Refresh holder (≥ ${ACCESS_POLICIES[0].minAssets}). No BackUps fee for this policy.`;
-    }  else if (search.feeAda > 0) {
-      feeStatus.textContent =
-        `Quoted BackUps fee for this policy is ${search.feeAda}₳ (10₳ per 50 assets, minimum 10₳).`;
+    } else if (search.feeAda > 0) {
+      if (alreadyPaidForThisPolicy) {
+        // 🔹 Policy already paid – do NOT show the quoted-fee line
+        feeStatus.textContent =
+          'Payment for this policy has already been recorded.\n' +
+          'You can reuse that payment to run a new BackUp without additional fees.';
+      } else {
+        // Not yet paid – show the quoted-fee line as before
+        feeStatus.textContent =
+          `Quoted BackUps fee for this policy is ${search.feeAda}₳ ` +
+          `(10₳ per 50 assets, minimum 10₳).`;
+      }
     } else {
       feeStatus.textContent =
         'No assets under this policy in your previous quote.';
     }
   }
 
+
   // 🔹 This is the message you asked for in the viewing/preview area
-  if (quoteWarn) {
-    if (!backupsIsHolder && search.feeAda > 0 && !alreadyPaidForThisPolicy) {
-      quoteWarn.textContent =
-        'You have already run the initial scan for this policy.\n' +
-        'Please pay the quoted fee to obtain the full metadata again and download the BackUps .zip.';
-    } else if (!backupsIsHolder && alreadyPaidForThisPolicy) {
-      quoteWarn.textContent =
-        'This policy has already been paid for.\n' +
-        'Click “Download BackUps .zip” to run a fresh BackUp using your existing payment.\n' +
-        'If you press “Scan policy on chain”, you will generate a new quote and be charged again for a new BackUp.';
-    } else {
-      quoteWarn.textContent = '';
-    }
+if (quoteWarn) {
+  if (!backupsIsHolder && search.feeAda > 0 && !alreadyPaidForThisPolicy) {
+    quoteWarn.textContent =
+      'You have already run the initial scan for this policy.\n' +
+      'Please pay the quoted fee to generate and download the BackUps .zip.';
+  } else if (!backupsIsHolder && alreadyPaidForThisPolicy) {
+    quoteWarn.textContent =
+      'This policy has already been paid for.\n' +
+      'Click “Download BackUps .zip” to run a fresh BackUp using your existing payment.\n' +
+      'If you press “Scan policy on chain”, you will receive a new quote and be charged again for a new BackUp.';
+  } else {
+    quoteWarn.textContent = '';
   }
+}
+
 
 
   if (payBtn) {
@@ -2463,6 +2498,85 @@ async function scanMetadataForCurrentPolicy(statusEl) {
   backupsHasScan  = true;
   backupsLastRows = rows;
   backupsLastKeys = Array.from(allKeys).sort();
+
+  renderBackupsResults();
+}
+
+
+async function scanMetadataForUnitList(unitEntries, statusEl) {
+  if (!Array.isArray(unitEntries) || unitEntries.length === 0) return;
+
+  const downloadStatusEl = document.getElementById('backupsDownloadStatus');
+  const headerLineForScan =
+    'Processing BackUps request… Fetching asset metadata and preparing ZIP…';
+
+  // Normalize entries to { unit, quantity }
+  const normalized = unitEntries
+    .map((entry) => {
+      if (!entry) return null;
+      if (typeof entry === 'string') {
+        return { unit: entry, quantity: '1' };
+      }
+      const u = entry.unit || '';
+      if (!u) return null;
+      const q = entry.quantity != null ? String(entry.quantity) : '1';
+      return { unit: u, quantity: q };
+    })
+    .filter(Boolean);
+
+  const allKeys = new Set();
+  const rows    = [];
+  const total   = normalized.length;
+
+  for (let i = 0; i < total; i++) {
+    const { unit, quantity } = normalized[i];
+
+    if (statusEl) {
+      if (statusEl === downloadStatusEl) {
+        statusEl.innerHTML =
+          `<strong>${headerLineForScan}</strong><br>` +
+          `<span style="opacity:0.85;">Scanning ${i + 1} / ${total}…</span>`;
+      } else {
+        statusEl.textContent = `Scanning ${i + 1} / ${total}…`;
+      }
+    }
+
+    const metadata = await fetchMetadataForAsset(unit);
+
+    if (!metadata || Object.keys(metadata).length === 0) {
+      continue;
+    }
+
+    const metaNameRaw =
+      typeof metadata.name === 'string' ? metadata.name.trim() : '';
+    if (!metaNameRaw) continue;
+
+    const policyHex = unit.slice(0, 56);
+    const nameHex   = unit.slice(56);
+    const assetNameClean = metaNameRaw;
+
+    Object.keys(metadata).forEach((k) => allKeys.add(k));
+
+    rows.push({
+      unit,
+      policyId: policyHex,
+      nameHex,
+      assetName: assetNameClean,
+      quantity,
+      metadata,
+    });
+  }
+
+  backupsHasScan  = rows.length > 0;
+  backupsLastRows = rows;
+  backupsLastKeys = Array.from(allKeys).sort();
+
+  // Prefer the stored policyId from the quote; otherwise derive it.
+  if (backupsCurrentSearchRecord && backupsCurrentSearchRecord.policyId) {
+    backupsLastPolicyId = backupsCurrentSearchRecord.policyId;
+  } else if (rows[0]) {
+    backupsLastPolicyId = rows[0].policyId;
+  }
 
   renderBackupsResults();
 }
@@ -2672,8 +2786,17 @@ async function backupsScanForPolicy() {
     await savePreviousSearch(
       rawPolicy,
       backupsCurrentAssetCount,
-      backupsCurrentFeeAda
+      backupsCurrentFeeAda,
+      {
+        modeUsed: 'blockchain',
+        // snapshot of the exact units & quantities used for this quote
+        units: backupsLastRows.map((row) => ({
+          unit: row.unit,
+          quantity: row.quantity,
+        })),
+      }
     );
+
 
   } catch (err) {
     console.error('[BackUps] scan error:', err);
@@ -3088,19 +3211,91 @@ function wrapText(ctx, text, maxWidth) {
 
 
 async function exportBackupsZip() {
-  if (!backupsHasScan || !backupsLastRows.length || !window.JSZip || !window.saveAs) {
+  const downloadStatus = document.getElementById('backupsDownloadStatus');
+  const zipBtn         = document.getElementById('backupsDownloadZipBtn');
+
+  const headerLine =
+    'Processing BackUps request… Fetching asset metadata and preparing ZIP…';
+
+  // Make sure ZIP libraries are actually available
+  if (!window.JSZip || !window.saveAs) {
+    if (downloadStatus) {
+      downloadStatus.textContent =
+        'ZIP libraries are not loaded, so BackUps .zip cannot be prepared in this session.';
+    }
     return;
   }
+
+  // Payment guard (unchanged logic)
   if (backupsRequiresPayment && !backupsIsHolder && !backupsPaidForCurrentPolicy) {
     alert('Complete payment for this policy before downloading the BackUps .zip.');
     return;
   }
 
-  const downloadStatus = document.getElementById('backupsDownloadStatus');
-  const zipBtn         = document.getElementById('backupsDownloadZipBtn');
+  // 🔹 NEW: if we don't yet have a scan in this session, but we have a policy,
+  //        automatically run the metadata scan first (for blockchain mode).
+  if (!backupsHasScan || !backupsLastRows.length) {
+    const search = backupsCurrentSearchRecord;
 
-  const headerLine = 'Processing BackUps request… Fetching asset metadata and preparing ZIP…';
+    // We at least need a policy or a stored quote to know what to scan.
+    if (!backupsLastPolicyId && !(search && search.policyId)) {
+      alert('Select or scan a policy before downloading.');
+      return;
+    }
 
+    // Prefer mode + units from the stored quote, if present.
+    const modeFromQuote  = search && search.modeUsed ? search.modeUsed : null;
+    const unitsFromQuote = search && Array.isArray(search.units)
+      ? search.units
+      : null;
+
+    try {
+      if (modeFromQuote === 'wallet' && unitsFromQuote && unitsFromQuote.length) {
+        // Rebuild the exact wallet selection from the stored units list,
+        // without touching the connected wallet.
+        if (downloadStatus) {
+          downloadStatus.innerHTML =
+            `<strong>${headerLine}</strong><br>` +
+            `<span style="opacity:0.85;">Scanning your previously-selected assets and fetching on-chain metadata…</span>`;
+        }
+
+        await scanMetadataForUnitList(unitsFromQuote, downloadStatus || null);
+      } else {
+        // Default: policy-wide blockchain scan (original mode was blockchain,
+        // or we have no mode info).
+        if (!backupsLastPolicyId && search && search.policyId) {
+          backupsLastPolicyId = search.policyId;
+        }
+
+        if (downloadStatus) {
+          downloadStatus.innerHTML =
+            `<strong>${headerLine}</strong><br>` +
+            `<span style="opacity:0.85;">Scanning assets and fetching on-chain metadata…</span>`;
+        }
+
+        await scanMetadataForCurrentPolicy(downloadStatus || null);
+      }
+    } catch (err) {
+      console.error('[BackUps] auto-scan before ZIP failed:', err);
+      if (downloadStatus) {
+        downloadStatus.textContent =
+          'An error occurred while scanning assets for this policy. Please try “Scan policy on chain” first.';
+      }
+      return;
+    }
+
+    // After auto-scan, still nothing to work with
+    if (!backupsHasScan || !backupsLastRows.length) {
+      if (downloadStatus) {
+        downloadStatus.textContent =
+          'No assets with on-chain metadata were found for this policy.';
+      }
+      return;
+    }
+  }
+
+
+  // From here down, your original ZIP-building logic stays the same
   if (zipBtn) {
     zipBtn.disabled = true;
   }
@@ -3226,19 +3421,18 @@ async function exportBackupsZip() {
         continue;
       }
 
-  if (!finalUrl) continue;
+      if (!finalUrl) continue;
 
-  // Use the asset name for the image filename, sanitized.
-  // Fall back to unit only if there is no assetName at all.
-  let safeName = (row.assetName && row.assetName.trim())
-    ? row.assetName.trim()
-    : row.unit;
+      // Use the asset name for the image filename, sanitized.
+      // Fall back to unit only if there is no assetName at all.
+      let safeName = (row.assetName && row.assetName.trim())
+        ? row.assetName.trim()
+        : row.unit;
 
-  // Replace any character that isn't A–Z, 0–9, _ or - with "_"
-  safeName = safeName.replace(/[^a-z0-9_\-]/gi, '_');
+      // Replace any character that isn't A–Z, 0–9, _ or - with "_"
+      safeName = safeName.replace(/[^a-z0-9_\-]/gi, '_');
 
-  imageTasks.push({ finalUrl, safeName, expectedBytes: null });
-
+      imageTasks.push({ finalUrl, safeName, expectedBytes: null });
     }
 
     const totalImages = imageTasks.length;
@@ -3499,6 +3693,7 @@ async function exportBackupsZip() {
     }
   }
 }
+
 
 
 
