@@ -1991,7 +1991,7 @@ function isRetryableStatusForPreview(status) {
   );
 }
 
-async function fetchImageBlobWithRetries(imgElement, url, maxAttempts = 50) {
+async function fetchImageBlobWithRetries(imgElement, url, maxAttempts = 5) {
   // Visual indication that we are retrying (optional opacity change)
   imgElement.style.opacity = '0.5';
 
@@ -2086,7 +2086,7 @@ if (base64Thumb) {
 
 const propsHtml = buildPropertiesSnippet(asset.metadata);
 
-// FIX: Use asset.displayName for the visual title
+    // FIX: Use asset.displayName for the visual title
     card.innerHTML = `
       ${thumbHtml}
       <div class="wallet-asset-title">${escapeHtml(asset.displayName)}</div>
@@ -3047,7 +3047,7 @@ async function backupsScanWalletPolicy() {
     if (walletSection) walletSection.classList.remove('hidden');
 
     const results = [];
-    for (let i = 0; i < matches.length; i++) {
+for (let i = 0; i < matches.length; i++) {
       const a = matches[i];
       if (statusEl) {
         statusEl.textContent =
@@ -3057,52 +3057,53 @@ async function backupsScanWalletPolicy() {
       const unit = a.unit || (a.policyId + (a.assetName || ''));
       if (!unit) continue;
 
-const metadata = await fetchMetadataForAsset(unit) || {};
-    const policyHex = unit.slice(0, 56);
-    const nameHex   = unit.slice(56);
+      const metadata = await fetchMetadataForAsset(unit) || {};
+      const policyHex = unit.slice(0, 56);
+      const nameHex   = unit.slice(56);
 
-    // 1. DATA NAME: Hex converted to ASCII (strictly for files/exports)
-    let exportName = hexToAscii(nameHex);
-    if (!exportName || !isPrintableAscii(exportName)) {
-       exportName = nameHex || '(no name)';
-    }
-
-    // 2. DISPLAY NAME: Metadata Name (strictly for UI visuals)
-    // Fall back to exportName if metadata.name is missing
-    let visualName = exportName;
-    if (metadata.name && typeof metadata.name === 'string' && metadata.name.trim()) {
-        visualName = metadata.name.trim();
-    }
-
-    const quantity = String(a.quantity ?? '1');
-
-    let imageUrl = '';
-    let imgField = metadata.image;
-    if (Array.isArray(imgField)) {
-      imgField = imgField.find(v => typeof v === 'string') || null;
-    }
-    if (typeof imgField === 'string') {
-      if (imgField.startsWith('ipfs://')) {
-        let path = imgField.replace(/^ipfs:\/\//, '');
-        if (path.startsWith('ipfs/')) {
-          path = path.slice(5);
-        }
-        imageUrl = `https://ipfs.io/ipfs/${path}`;
-      } else if (imgField.startsWith('http://') || imgField.startsWith('https://')) {
-        imageUrl = imgField;
+      // 1. FILE NAME (Export): Convert Hex to ASCII (e.g. "AAI481")
+      // If conversion is empty or non-printable, fallback to hex.
+      let exportName = hexToAscii(nameHex);
+      if (!exportName || !isPrintableAscii(exportName)) {
+         exportName = nameHex || '(no name)';
       }
-    }
 
-    results.push({
-      unit,
-      policyId: policyHex,
-      nameHex,
-      assetName: exportName,   // Keep this for JSON/Export logic
-      displayName: visualName, // Add this for UI logic
-      quantity,
-      metadata,
-      imageUrl,
-    });
+      // 2. VISUAL NAME (UI): Use Metadata Name (e.g. "AFR₳ID AI")
+      // Fall back to exportName if metadata.name is missing.
+      let visualName = exportName;
+      if (metadata.name && typeof metadata.name === 'string' && metadata.name.trim()) {
+          visualName = metadata.name.trim();
+      }
+
+      const quantity = String(a.quantity ?? '1');
+
+      let imageUrl = '';
+      let imgField = metadata.image;
+      if (Array.isArray(imgField)) {
+        imgField = imgField.find(v => typeof v === 'string') || null;
+      }
+      if (typeof imgField === 'string') {
+        if (imgField.startsWith('ipfs://')) {
+          let path = imgField.replace(/^ipfs:\/\//, '');
+          if (path.startsWith('ipfs/')) {
+            path = path.slice(5);
+          }
+          imageUrl = `https://ipfs.io/ipfs/${path}`;
+        } else if (imgField.startsWith('http://') || imgField.startsWith('https://')) {
+          imageUrl = imgField;
+        }
+      }
+
+      results.push({
+        unit,
+        policyId: policyHex,
+        nameHex,
+        assetName: exportName,   // ✅ Used for Files (Human Readable ASCII)
+        displayName: visualName, // ✅ Used for Visual Preview (Metadata Name)
+        quantity,
+        metadata,
+        imageUrl,
+      });
     }
 
     walletAssetsAll = results;
@@ -3525,39 +3526,40 @@ async function exportBackupsZip() {
     const csvString = lines.join('\n');
     root.file('metadata.csv', csvString);
 
+
 // 3) by_asset/*.json – one CIP-25 style JSON per asset
-const perAsset = root.folder('by_asset');
+    const perAsset = root.folder('by_asset');
 
-for (const { row, meta } of normalizedRows) {
-  const assetKey = row.assetName;
-  if (!assetKey) continue; // extra safety
+    for (const { row, meta } of normalizedRows) {
+      const assetKey = row.assetName;
+      if (!assetKey) continue; 
 
-  const cip25 = {
-    "721": {
-      [row.policyId]: {
-        [assetKey]: meta
-      }
+      const cip25 = {
+        "721": {
+          [row.policyId]: {
+            [assetKey]: meta
+          }
+        }
+      };
+
+      // 🔄 FIX: Use row.assetName (Human Readable ASCII) for filename
+      let baseName = (row.assetName && row.assetName.trim())
+        ? row.assetName.trim()
+        : row.unit;
+
+      if (!baseName) continue;
+
+      // Replace anything not A–Z, 0–9, _ or - with "_"
+      const safeName = baseName.replace(/[^a-z0-9_\-]/gi, '_');
+
+      perAsset.file(
+        `${safeName}.json`,
+        JSON.stringify(cip25, null, 2)
+      );
     }
-  };
-
-  //  Use the human-readable assetName 
-  let baseName = (row.assetName && row.assetName.trim())
-    ? row.assetName.trim()
-    : row.unit;
-
-  if (!baseName) continue;
-
-  // Replace anything not A–Z, 0–9, _ or - with "_"
-  const safeName = baseName.replace(/[^a-z0-9_\-]/gi, '_');
-
-  perAsset.file(
-    `${safeName}.json`,
-    JSON.stringify(cip25, null, 2)
-  );
-}
 
 
-    // 4) images/ – download image files from IPFS / HTTP where possible
+// 4) images/ – download image files from IPFS / HTTP where possible
     const imgFolder = root.folder('images');
 
     // First, collect all image tasks (so we know how many there are)
@@ -3567,7 +3569,7 @@ for (const { row, meta } of normalizedRows) {
       let imgField = meta.image;
       if (!imgField) continue;
 
-      // Some collections use an array of images – grab the first string
+      // ... (keep your existing array/string check logic here) ...
       if (Array.isArray(imgField)) {
         imgField = imgField.find(v => typeof v === 'string') || null;
       }
@@ -3575,24 +3577,20 @@ for (const { row, meta } of normalizedRows) {
 
       let finalUrl = null;
 
+      // ... (keep your existing IPFS/HTTP url parsing logic here) ...
       if (imgField.startsWith('ipfs://')) {
-        // ipfs://Qm... or ipfs://ipfs/Qm...
-        let path = imgField.replace(/^ipfs:\/\//, '');
-        if (path.startsWith('ipfs/')) {
-          path = path.slice(5);
-        }
-        // You can swap to your preferred gateway here
-        finalUrl = `https://ipfs.io/ipfs/${path}`;
+         let path = imgField.replace(/^ipfs:\/\//, '');
+         if (path.startsWith('ipfs/')) path = path.slice(5);
+         finalUrl = `https://ipfs.io/ipfs/${path}`;
       } else if (imgField.startsWith('https://') || imgField.startsWith('http://')) {
-        finalUrl = imgField;
+         finalUrl = imgField;
       } else {
-        // Unknown scheme (e.g. bare CID) – skip for now
-        continue;
+         continue;
       }
 
       if (!finalUrl) continue;
 
-// 🔄 FIX: Use row.assetName (Human Readable ASCII) for filename
+      // 🔄 FIX: Use row.assetName (Human Readable ASCII) for filename
       let baseName = (row.assetName && row.assetName.trim())
         ? row.assetName.trim()
         : row.unit;
@@ -3761,7 +3759,7 @@ for (const { row, meta } of normalizedRows) {
       }
     }
 
-    async function fetchImageWithRetries(task, maxAttempts = 50) {
+    async function fetchImageWithRetries(task, maxAttempts = 10) {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         const result = await fetchImageOnce(task, attempt, maxAttempts);
         if (result === 'success') {
