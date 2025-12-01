@@ -1274,7 +1274,7 @@
 import {
   BrowserWallet,
   Transaction,
-} from 'https://esm.sh/@meshsdk/core@1.9.0-beta.62?bundle';
+} from '/meshsdk-core-1.9.0-b62.js';
 
 const sel           = document.getElementById('walletSelect');
 const btn           = document.getElementById('connectBtn');
@@ -2522,34 +2522,41 @@ async function scanMetadataForCurrentPolicy(statusEl) {
     }
 
 
-  const metadata = await fetchMetadataForAsset(unit);
+    const metadata = await fetchMetadataForAsset(unit);
 
-  // 🔴 If there is no metadata at all – skip it
-  if (!metadata || Object.keys(metadata).length === 0) {
-    continue;
-  }
+    // 🔴 If there is no metadata at all – skip it
+    if (!metadata || Object.keys(metadata).length === 0) {
+      continue;
+    }
 
-  // 🔴 Require a proper name in metadata
-  const metaNameRaw = (typeof metadata.name === 'string') ? metadata.name.trim() : '';
+    // 🔴 Check for display name, but don't use it as the key
+    const metaNameRaw = (typeof metadata.name === 'string') ? metadata.name.trim() : '';
 
-  // if there's no name we don't want it
-  if (!metaNameRaw) {
-    continue;
-  }
+    // if there's no name in metadata we don't want it (filtering bad assets)
+    if (!metaNameRaw) {
+      continue;
+    }
 
-  // store this as the assetName we use everywhere
-  const assetNameClean = metaNameRaw;
+    // FIX: Derive the real assetName from the nameHex (Human Readable or Hex)
+    // This ensures the JSON key matches the on-chain Asset Name (e.g. "AAI481"), not the Display Name.
+    let realAssetName = hexToAscii(nameHex);
+    // If conversion results in empty or non-printable characters, fall back to hex
+    if (!realAssetName || !isPrintableAscii(realAssetName)) {
+        realAssetName = nameHex; 
+    }
+    
+    const assetNameClean = realAssetName;
 
-  Object.keys(metadata).forEach(k => allKeys.add(k));
+    Object.keys(metadata).forEach(k => allKeys.add(k));
 
-  rows.push({
-    unit,
-    policyId: policyHex,
-    nameHex,
-    assetName: assetNameClean,   // this is now ALWAYS metadata.name
-    quantity,
-    metadata,
-  });
+    rows.push({
+      unit,
+      policyId: policyHex,
+      nameHex,
+      assetName: assetNameClean,   // Now correctly set to the Token Name
+      quantity,
+      metadata,
+    });
 
   }
 
@@ -2601,17 +2608,27 @@ async function scanMetadataForUnitList(unitEntries, statusEl) {
 
     const metadata = await fetchMetadataForAsset(unit);
 
+
     if (!metadata || Object.keys(metadata).length === 0) {
       continue;
     }
 
     const metaNameRaw =
       typeof metadata.name === 'string' ? metadata.name.trim() : '';
+    
+    // Filter out assets with no metadata name
     if (!metaNameRaw) continue;
 
     const policyHex = unit.slice(0, 56);
     const nameHex   = unit.slice(56);
-    const assetNameClean = metaNameRaw;
+
+    // FIX: Derive real assetName from nameHex
+    let realAssetName = hexToAscii(nameHex);
+    if (!realAssetName || !isPrintableAscii(realAssetName)) {
+        realAssetName = nameHex;
+    }
+
+    const assetNameClean = realAssetName;
 
     Object.keys(metadata).forEach((k) => allKeys.add(k));
 
@@ -2619,10 +2636,11 @@ async function scanMetadataForUnitList(unitEntries, statusEl) {
       unit,
       policyId: policyHex,
       nameHex,
-      assetName: assetNameClean,
+      assetName: assetNameClean, // Correct Key
       quantity,
       metadata,
     });
+
   }
 
   backupsHasScan  = rows.length > 0;
@@ -2968,11 +2986,10 @@ async function backupsScanWalletPolicy() {
       const policyHex = unit.slice(0, 56);
       const nameHex   = unit.slice(56);
 
-      let assetName = '';
-      if (typeof metadata.name === 'string' && metadata.name.trim()) {
-        assetName = metadata.name.trim();
-      } else {
-        assetName = hexToAscii(nameHex) || '(no ASCII name)';
+      // FIX: Set assetName based on the token's nameHex (ASCII), not the metadata display name
+      let assetName = hexToAscii(nameHex);
+      if (!assetName || !isPrintableAscii(assetName)) {
+         assetName = nameHex || '(no name)';
       }
 
       const quantity = String(a.quantity ?? '1');
@@ -3425,33 +3442,37 @@ async function exportBackupsZip() {
     const csvString = lines.join('\n');
     root.file('metadata.csv', csvString);
 
-    // 3) by_asset/*.json – one CIP-25 style JSON per asset
-    const perAsset = root.folder('by_asset');
+// 3) by_asset/*.json – one CIP-25 style JSON per asset
+const perAsset = root.folder('by_asset');
 
-    for (const { row, meta } of normalizedRows) {
-      const assetKey = row.assetName;
-      if (!assetKey) continue; // extra safety
+for (const { row, meta } of normalizedRows) {
+  const assetKey = row.assetName;
+  if (!assetKey) continue; // extra safety
 
-      const cip25 = {
-        "721": {
-          [row.policyId]: {
-            [assetKey]: meta
-          }
-        }
-      };
-
-      // file name based on the asset name, cleaned up
-      let safeName = assetKey.trim();
-      if (!safeName) continue;
-
-      // Replace anything not A–Z, 0–9, _ or - with "_"
-      safeName = safeName.replace(/[^a-z0-9_\-]/gi, '_');
-
-      perAsset.file(
-        `${safeName}.json`,
-        JSON.stringify(cip25, null, 2)
-      );
+  const cip25 = {
+    "721": {
+      [row.policyId]: {
+        [assetKey]: meta
+      }
     }
+  };
+
+  //  Use the human-readable assetName 
+  let baseName = (row.assetName && row.assetName.trim())
+    ? row.assetName.trim()
+    : row.unit;
+
+  if (!baseName) continue;
+
+  // Replace anything not A–Z, 0–9, _ or - with "_"
+  const safeName = baseName.replace(/[^a-z0-9_\-]/gi, '_');
+
+  perAsset.file(
+    `${safeName}.json`,
+    JSON.stringify(cip25, null, 2)
+  );
+}
+
 
     // 4) images/ – download image files from IPFS / HTTP where possible
     const imgFolder = root.folder('images');
@@ -3488,17 +3509,19 @@ async function exportBackupsZip() {
 
       if (!finalUrl) continue;
 
-      // Use the asset name for the image filename, sanitized.
-      // Fall back to unit only if there is no assetName at all.
-      let safeName = (row.assetName && row.assetName.trim())
-        ? row.assetName.trim()
-        : row.unit;
-
-      // Replace any character that isn't A–Z, 0–9, _ or - with "_"
-      safeName = safeName.replace(/[^a-z0-9_\-]/gi, '_');
-
-      imageTasks.push({ finalUrl, safeName, expectedBytes: null });
-    }
+    // FIX: Use human-readable assetName for image filename
+    let baseName = (row.assetName && row.assetName.trim())
+      ? row.assetName.trim()
+      : row.unit;
+    
+    if (!baseName) continue;
+    
+    // Replace any character that isn't A–Z, 0–9, _ or - with "_"
+    const safeName = baseName.replace(/[^a-z0-9_\-]/gi, '_');
+    
+    imageTasks.push({ finalUrl, safeName, expectedBytes: null });
+    
+        }
 
     const totalImages = imageTasks.length;
     let completedImages = 0;
