@@ -246,6 +246,16 @@
   margin-left: 0.35em;      /* little gap after BackUps */
 }
 
+.backups-inline-highlight {
+  font-weight: 600;
+  background: linear-gradient(135deg, #ff9a3c, #ffd869);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 5px rgba(255, 200, 120, 0.55);
+}
+
+
 
 
     /* Gated area layout */
@@ -476,16 +486,21 @@
   margin-bottom: 0.25rem;
 }
 
+/* Center the whole bullet block */
 .loc-substeps {
-  margin-top: 0.35rem;
+  display: flex;
+  justify-content: center;  /* centers the UL as a block */
+  margin-top: 0.5rem;       /* optional spacing tweak */
 }
 
+/* Make the bullets look "normal" inside that centered block */
 .loc-substeps ul {
-  margin: 0.25rem 0 0;
-  padding-left: 1.1rem;
-  font-size: 0.8rem;
-  opacity: 0.9;
+  text-align: left;         /* left-align the bullet text */
+  list-style-position: outside;
+  padding-left: 1.5rem;     /* controls bullet indent */
+  margin: 0;                /* remove weird extra margins */
 }
+
 
 .loc-substeps li {
   margin-bottom: 0.2rem;
@@ -717,11 +732,16 @@
 }
 .prev-search-receipt-link {
   font-size: 0.72rem;
-  color: #ffc857;
+  font-weight: 600;
+  background: linear-gradient(135deg, #ff9a3c, #ffd869);
+  -webkit-background-clip: text;
+  background-clip: text;
   text-decoration: underline;
   cursor: pointer;
   display: inline-block;
   margin-top: 0.1rem;
+  color: transparent;
+  text-shadow: 0 0 5px rgba(255, 200, 120, 0.55);
 }
 
 .prev-search-receipt-link:hover {
@@ -924,6 +944,7 @@
     <li>Paste the policy ID you want to BackUp.</li>
     <li>Review the quoted fee and pay if you’re not a Refresh Whale.</li>
     <li>Once the payment is confirmed, BackUps downloads are unlocked.</li>
+    <li>No mobile downloads. After paying, connect the same account from a different device to complete the BackUps process. Your order can be found under Scan History & Receipts.</li>
   </ul>
 </div>
 
@@ -1084,11 +1105,11 @@
     <section class="loc-status-block loc-legal">
       <p class="loc-legal-text">
 
-        The Refresh and/or BackUps are not responsible for what you or anyone,
-        that obtains the files and/or images you download, do with those files
+        The Refresh and/or BackUps is/are not responsible for what you or anyone,
+        that obtains the files and/or images you or anyone downloads through the connected wallet account, do with those files
         and/or images. This tool accesses decentralized data fully available on
         the blockchain. You are solely responsible for what happens with the
-        content you download, what content you decide to download, and whatever
+        content you or anyone downloads via the connected wallet account, what content you or anyone decides to download, and whatever
         consequences follow those actions.
       </p>
     </section>
@@ -1213,6 +1234,7 @@
     <li>Paste the policy ID you want to BackUp.</li>
     <li>Review the quoted fee and pay if you’re not a Refresh Whale.</li>
     <li>Once the payment is confirmed, BackUps downloads are unlocked.</li>
+    <li>No mobile downloads. After paying, connect the same account from a different device to complete the BackUps process. Your order can be found under Scan History & Receipts.</li>
   </ul>
 </div>
 
@@ -2286,9 +2308,12 @@ const makeItem = (s) => {
 }
 
 const PAID_POLICY_MESSAGE =
-  'This policy BackUps has already been paid for.\n' +
-  'Click “Download BackUps .zip” to run a fresh BackUp using your existing payment.\n' +
-  'If you press “Scan policy on chain”, you will receive a new quote and be charged again to download.';
+  'This policy BackUps is <span class="backups-inline-highlight">PAID</span>.<br>' +
+  'Click <span class="backups-inline-highlight">Download BackUps .zip</span> to proceed with saving.<br>' +
+  'If you press <span class="backups-inline-highlight">Scan policy</span>, you will receive a ' +
+  '<span class="backups-inline-highlight">new quote</span> and be ' +
+  '<span class="backups-inline-highlight">charged again</span> to download.';
+
 
 
 
@@ -2381,7 +2406,7 @@ if (quoteWarn) {
       'Please pay the quoted fee to generate and download the BackUps .zip.';
   } else if (!backupsIsHolder && alreadyPaidForThisPolicy) {
     // 🔹 This is the ONLY message shown once a policy is paid
-    quoteWarn.textContent = PAID_POLICY_MESSAGE;
+    quoteWarn.innerHTML = PAID_POLICY_MESSAGE;
   } else {
     quoteWarn.textContent = '';
   }
@@ -2401,7 +2426,7 @@ if (quoteWarn) {
   }
 
   // ✅ Important: leave Scan button ENABLED.
-  // Clicking "Scan policy on chain" is now the *only* thing that talks to Blockfrost.
+  // Clicking "Scan policy" is now the *only* thing that talks to Blockfrost.
   if (scanBtn) {
     scanBtn.disabled = false;
   }
@@ -2690,7 +2715,7 @@ function renderBackupsResults() {
       }
       const quoteWarnEl = document.getElementById('backupsQuoteWarning');
       if (quoteWarnEl) {
-        quoteWarnEl.textContent = PAID_POLICY_MESSAGE;
+        quoteWarnEl.innerHTML = PAID_POLICY_MESSAGE;
       }
       if (payBtn) {
         payBtn.style.display = 'none';
@@ -2748,7 +2773,7 @@ async function backupsScanForPolicy() {
   table?.classList.add('hidden');
   if (summary) {
     summary.innerHTML =
-      '<span>No scan yet. Paste a policy ID and press “Scan policy on chain”.</span>';
+      '<span>No scan yet. Paste a policy ID and press “Scan policy”.</span>';
   }
   if (feeStatus) feeStatus.textContent = '';
   if (payBtn) {
@@ -3319,7 +3344,7 @@ async function exportBackupsZip() {
       console.error('[BackUps] auto-scan before ZIP failed:', err);
       if (downloadStatus) {
         downloadStatus.textContent =
-          'An error occurred while scanning assets for this policy. Please try “Scan policy on chain” first.';
+          'An error occurred while scanning assets for this policy. Please try “Scan policy” first.';
       }
       return;
     }
@@ -4151,9 +4176,11 @@ async function checkPolicyAssets() {
       walletStatus.textContent = detail;
 
       accessMessage.classList.add('error');
-      accessMessage.innerHTML =
-        `You don’t yet meet the VIP BackUps access requirements.<br>` +
-        `Press “Enter BackUps” below to continue and scan a policy with per-policy pricing.`;
+    accessMessage.innerHTML =
+      `You don’t yet meet the VIP BackUps access requirements. ` +
+      `<a href="https://www.jpg.store/collection/therefresh" target="_blank" rel="noopener noreferrer">Get VIP Access</a><br>` +
+      `Press “Enter BackUps” below to continue and scan a policy with per-policy pricing.`;
+
 
 
       payAccessBtn.textContent = 'Enter BackUps';
