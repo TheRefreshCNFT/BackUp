@@ -2263,6 +2263,13 @@ const makeItem = (s) => {
   }
 }
 
+const PAID_POLICY_MESSAGE =
+  'This policy BackUps has already been paid for.\n' +
+  'Click “Download BackUps .zip” to run a fresh BackUp using your existing payment.\n' +
+  'If you press “Scan policy on chain”, you will receive a new quote and be charged again to download.';
+
+
+
 function runQuotedScanFlow(search) {
     backupsCurrentSearchRecord = search || null; 
   const statusEl  = document.getElementById('backupsScanStatus');
@@ -2305,11 +2312,18 @@ function runQuotedScanFlow(search) {
   }
 
 
+
   // ✅ Only restore the quote & UI text – NO new scan here
   if (statusEl) {
-    statusEl.textContent =
-      'Reusing your previous BackUps quote for this policy. No new on-chain scan has been run yet.';
+    if (!backupsIsHolder && alreadyPaidForThisPolicy) {
+      // For paid policies we keep this area quiet and let PAID_POLICY_MESSAGE speak
+      statusEl.textContent = '';
+    } else {
+      statusEl.textContent =
+        'Reusing your previous BackUps quote for this policy. No new on-chain scan has been run yet.';
+    }
   }
+
 
   if (summary) {
     summary.innerHTML =
@@ -2322,12 +2336,9 @@ function runQuotedScanFlow(search) {
         `You are a Refresh holder (≥ ${ACCESS_POLICIES[0].minAssets}). No BackUps fee for this policy.`;
     } else if (search.feeAda > 0) {
       if (alreadyPaidForThisPolicy) {
-        // 🔹 Policy already paid – do NOT show the quoted-fee line
-        feeStatus.textContent =
-          'Payment for this policy has already been recorded.\n' +
-          'You can reuse that payment to run a new BackUp without additional fees.';
+        // For paid policies, don’t restate the same thing here
+        feeStatus.textContent = '';
       } else {
-        // Not yet paid – show the quoted-fee line as before
         feeStatus.textContent =
           `Quoted BackUps fee for this policy is ${search.feeAda}₳ ` +
           `(10₳ per 50 assets, minimum 10₳).`;
@@ -2339,6 +2350,7 @@ function runQuotedScanFlow(search) {
   }
 
 
+
   // 🔹 This is the message you asked for in the viewing/preview area
 if (quoteWarn) {
   if (!backupsIsHolder && search.feeAda > 0 && !alreadyPaidForThisPolicy) {
@@ -2346,14 +2358,13 @@ if (quoteWarn) {
       'You have already run the initial scan for this policy.\n' +
       'Please pay the quoted fee to generate and download the BackUps .zip.';
   } else if (!backupsIsHolder && alreadyPaidForThisPolicy) {
-    quoteWarn.textContent =
-      'This policy has already been paid for.\n' +
-      'Click “Download BackUps .zip” to run a fresh BackUp using your existing payment.\n' +
-      'If you press “Scan policy on chain”, you will receive a new quote and be charged again for a new BackUp.';
+    // 🔹 This is the ONLY message shown once a policy is paid
+    quoteWarn.textContent = PAID_POLICY_MESSAGE;
   } else {
     quoteWarn.textContent = '';
   }
 }
+
 
 
 
@@ -2653,14 +2664,18 @@ function renderBackupsResults() {
     } else if (backupsPaidForCurrentPolicy) {
       // Non-holder, but this policy has already been paid for in this session
       if (feeStatus) {
-        feeStatus.textContent =
-          `Payment confirmed for this policy.\nYou can now download the BackUps .zip.`;
+        feeStatus.textContent = '';
+      }
+      const quoteWarnEl = document.getElementById('backupsQuoteWarning');
+      if (quoteWarnEl) {
+        quoteWarnEl.textContent = PAID_POLICY_MESSAGE;
       }
       if (payBtn) {
         payBtn.style.display = 'none';
       }
       zipBtn.disabled = false;
     } else {
+
       // Non-holder, not yet paid
       if (feeStatus) {
 feeStatus.textContent =
@@ -2845,6 +2860,9 @@ async function backupsScanWalletPolicy() {
   backupsCurrentAssetCount    = 0;
   backupsCurrentFeeAda        = 0;
   backupsCurrentFeeLovelace   = '0';
+  
+  backupsPaidForCurrentPolicy = backupsIsHolder;
+  
 
   const rawPolicy = (policyEl?.value || '').trim();
 
