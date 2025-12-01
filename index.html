@@ -884,16 +884,21 @@
 }
 
 .backups-modal-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  margin-top: 0.35rem;
-}
+      flex: 1 1 auto;
+      min-height: 0;
+      margin-top: 0.35rem;
+      /* 🔹 Added these lines to ensure the table wrapper fills the height */
+      display: flex;
+      flex-direction: column;
+    }
 
-/* Let the table use the modal height instead of the smaller card height */
-.backups-modal .table-wrapper {
-  max-height: 100%;
-}
-
+    /* Let the table use the modal height instead of the smaller card height */
+    .backups-modal .table-wrapper {
+      /* 🔹 Changed from max-height: 100% to strict height and overflow settings */
+      height: 100%;
+      max-height: none;
+      overflow-y: auto; 
+    }
     
     #backupsResultsSummary code {
   font-size: 0.65em; /* roughly half the surrounding text size */
@@ -2028,11 +2033,11 @@ if (base64Thumb) {
 const propsHtml = buildPropertiesSnippet(asset.metadata);
 
 card.innerHTML = `
-  ${thumbHtml}
-  <div class="wallet-asset-title">${escapeHtml(asset.assetName || '(no name)')}</div>
-  <div class="wallet-asset-meta">Qty: ${asset.quantity}</div>
-  <div class="wallet-asset-props">${propsHtml}</div>
-`;
+      ${thumbHtml}
+      <div class="wallet-asset-title">${escapeHtml(asset.displayName)}</div>
+      <div class="wallet-asset-meta">Qty: ${asset.quantity}</div>
+      <div class="wallet-asset-props">${propsHtml}</div>
+    `;
 
 
     card.addEventListener('click', () => {
@@ -2982,44 +2987,52 @@ async function backupsScanWalletPolicy() {
       const unit = a.unit || (a.policyId + (a.assetName || ''));
       if (!unit) continue;
 
-      const metadata = await fetchMetadataForAsset(unit) || {};
-      const policyHex = unit.slice(0, 56);
-      const nameHex   = unit.slice(56);
+const metadata = await fetchMetadataForAsset(unit) || {};
+    const policyHex = unit.slice(0, 56);
+    const nameHex   = unit.slice(56);
 
-      // FIX: Set assetName based on the token's nameHex (ASCII), not the metadata display name
-      let assetName = hexToAscii(nameHex);
-      if (!assetName || !isPrintableAscii(assetName)) {
-         assetName = nameHex || '(no name)';
-      }
+    // 1. DATA NAME: Hex converted to ASCII (strictly for files/exports)
+    let exportName = hexToAscii(nameHex);
+    if (!exportName || !isPrintableAscii(exportName)) {
+       exportName = nameHex || '(no name)';
+    }
 
-      const quantity = String(a.quantity ?? '1');
+    // 2. DISPLAY NAME: Metadata Name (strictly for UI visuals)
+    // Fall back to exportName if metadata.name is missing
+    let visualName = exportName;
+    if (metadata.name && typeof metadata.name === 'string' && metadata.name.trim()) {
+        visualName = metadata.name.trim();
+    }
 
-      let imageUrl = '';
-      let imgField = metadata.image;
-      if (Array.isArray(imgField)) {
-        imgField = imgField.find(v => typeof v === 'string') || null;
-      }
-      if (typeof imgField === 'string') {
-        if (imgField.startsWith('ipfs://')) {
-          let path = imgField.replace(/^ipfs:\/\//, '');
-          if (path.startsWith('ipfs/')) {
-            path = path.slice(5);
-          }
-          imageUrl = `https://ipfs.io/ipfs/${path}`;
-        } else if (imgField.startsWith('http://') || imgField.startsWith('https://')) {
-          imageUrl = imgField;
+    const quantity = String(a.quantity ?? '1');
+
+    let imageUrl = '';
+    let imgField = metadata.image;
+    if (Array.isArray(imgField)) {
+      imgField = imgField.find(v => typeof v === 'string') || null;
+    }
+    if (typeof imgField === 'string') {
+      if (imgField.startsWith('ipfs://')) {
+        let path = imgField.replace(/^ipfs:\/\//, '');
+        if (path.startsWith('ipfs/')) {
+          path = path.slice(5);
         }
+        imageUrl = `https://ipfs.io/ipfs/${path}`;
+      } else if (imgField.startsWith('http://') || imgField.startsWith('https://')) {
+        imageUrl = imgField;
       }
+    }
 
-      results.push({
-        unit,
-        policyId: policyHex,
-        nameHex,
-        assetName,
-        quantity,
-        metadata,
-        imageUrl,
-      });
+    results.push({
+      unit,
+      policyId: policyHex,
+      nameHex,
+      assetName: exportName,   // Keep this for JSON/Export logic
+      displayName: visualName, // Add this for UI logic
+      quantity,
+      metadata,
+      imageUrl,
+    });
     }
 
     walletAssetsAll = results;
@@ -3509,19 +3522,18 @@ for (const { row, meta } of normalizedRows) {
 
       if (!finalUrl) continue;
 
-    // FIX: Use human-readable assetName for image filename
-    let baseName = (row.assetName && row.assetName.trim())
-      ? row.assetName.trim()
-      : row.unit;
-    
-    if (!baseName) continue;
-    
-    // Replace any character that isn't A–Z, 0–9, _ or - with "_"
-    const safeName = baseName.replace(/[^a-z0-9_\-]/gi, '_');
-    
-    imageTasks.push({ finalUrl, safeName, expectedBytes: null });
-    
-        }
+// 🔄 FIX: Use row.assetName (Human Readable ASCII) for filename
+      let baseName = (row.assetName && row.assetName.trim())
+        ? row.assetName.trim()
+        : row.unit;
+      
+      if (!baseName) continue;
+      
+      // Replace anything not A–Z, 0–9, _ or - with "_"
+      const safeName = baseName.replace(/[^a-z0-9_\-]/gi, '_');
+      
+      imageTasks.push({ finalUrl, safeName, expectedBytes: null });
+    }
 
     const totalImages = imageTasks.length;
     let completedImages = 0;
