@@ -222,8 +222,9 @@
       font-size: 2.1rem;
       letter-spacing: 0.04em;
     }
-    .backups-logo-text {
-  display: inline-block;
+.backups-logo-text {
+  display: inline-flex;
+  align-items: baseline; /* keeps BackUps + BETA on the same baseline */
   background: linear-gradient(135deg, #ff9a3c, #ffd869);
   -webkit-background-clip: text;
   background-clip: text;
@@ -232,7 +233,19 @@
   text-transform: uppercase;
   font-weight: 800;
   text-shadow: 0 0 18px rgba(255, 200, 120, 0.55);
+  line-height: 1;
 }
+
+.backups-logo-text-main {
+  font-size: 1em; /* main BackUps size */
+}
+
+.backups-logo-beta {
+  font-size: 0.55em;        /* smaller BETA */
+  letter-spacing: 0.18em;
+  margin-left: 0.35em;      /* little gap after BackUps */
+}
+
 
 
     /* Gated area layout */
@@ -892,11 +905,12 @@
     <header class="loc-header">
 <h2 class="loc-title">
   <span class="backups-logo-text">
-    BackUps
-    <span style="font-size:0.6em; margin-left:0.25em; vertical-align:top;">BETA</span>
+    <span class="backups-logo-text-main">BackUps</span>
+    <span class="backups-logo-beta">BETA</span>
   </span>
   <span class="loc-title-accent">by The Refresh</span>
 </h2>
+
 
 
 <p class="loc-subtitle">
@@ -1163,12 +1177,11 @@
 
   <header>
     <div class="container">
-      <h1>
-  <span class="backups-logo-text">
-    BackUps
-    <span style="font-size:0.6em; margin-left:0.25em; vertical-align:top;">BETA</span>
-  </span>
+<h1 class="backups-logo-text">
+  <span class="backups-logo-text-main">BackUps</span>
+  <span class="backups-logo-beta">BETA</span>
 </h1>
+
 
 
      <p id="description">
