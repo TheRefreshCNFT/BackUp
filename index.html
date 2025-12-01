@@ -1976,6 +1976,60 @@ function buildWalletFiltersUI() {
   }
 }
 
+// ---------------------------------------------------------
+// Visual Image Retry Helpers
+// ---------------------------------------------------------
+
+function isRetryableStatusForPreview(status) {
+  return (
+    status === 408 || // Request Timeout
+    status === 429 || // Too Many Requests
+    status === 500 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504    // Gateway Timeout
+  );
+}
+
+async function fetchImageBlobWithRetries(imgElement, url, maxAttempts = 50) {
+  // Visual indication that we are retrying (optional opacity change)
+  imgElement.style.opacity = '0.5';
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(url);
+      
+      if (res.ok) {
+        // Success! Convert to blob and show
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        imgElement.src = objectUrl;
+        imgElement.style.opacity = '1';
+        return;
+      }
+
+      // If not ok, check if we should retry
+      if (!isRetryableStatusForPreview(res.status)) {
+        console.warn(`[BackUps Preview] Non-retryable error ${res.status} for ${url}`);
+        break; // Stop trying
+      }
+
+      // If retryable, wait a bit (exponential backoff)
+      console.log(`[BackUps Preview] Retry attempt ${attempt} for ${url}`);
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+
+    } catch (err) {
+      console.warn(`[BackUps Preview] Network error on attempt ${attempt}`, err);
+      // Network errors are usually retryable, wait and loop again
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
+  }
+
+  // If we reach here, all attempts failed.
+  imgElement.alt = 'Failed to load';
+  imgElement.style.opacity = '1';
+}
+
 function renderWalletAssetsView() {
   const gridEl     = document.getElementById('walletAssetsGrid');
   const summaryEl  = document.getElementById('walletAssetsSummary');
@@ -2032,13 +2086,29 @@ if (base64Thumb) {
 
 const propsHtml = buildPropertiesSnippet(asset.metadata);
 
-card.innerHTML = `
+// FIX: Use asset.displayName for the visual title
+    card.innerHTML = `
       ${thumbHtml}
       <div class="wallet-asset-title">${escapeHtml(asset.displayName)}</div>
       <div class="wallet-asset-meta">Qty: ${asset.quantity}</div>
       <div class="wallet-asset-props">${propsHtml}</div>
     `;
 
+    // 🔹 NEW: Attach Error Handler for Retries
+    // We must do this after creating the HTML, but before the user interacts.
+    // We look for the image tag we just created inside this specific card.
+    const imgEl = card.querySelector('img.wallet-asset-thumb');
+    
+    // Only attach if it's an IMG tag and has a URL (base64 iframes don't need this)
+    if (imgEl && asset.imageUrl) {
+      imgEl.onerror = function() {
+        // 1. Clear onerror so we don't loop infinitely if the blob fails
+        this.onerror = null;
+        // 2. Trigger the robust fetch logic
+        console.log('Image load failed, attempting background retry for:', asset.imageUrl);
+        fetchImageBlobWithRetries(this, asset.imageUrl);
+      };
+    }
 
     card.addEventListener('click', () => {
       if (walletSelectedUnits.has(asset.unit)) {
@@ -3691,7 +3761,7 @@ for (const { row, meta } of normalizedRows) {
       }
     }
 
-    async function fetchImageWithRetries(task, maxAttempts = 10) {
+    async function fetchImageWithRetries(task, maxAttempts = 50) {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         const result = await fetchImageOnce(task, attempt, maxAttempts);
         if (result === 'success') {
